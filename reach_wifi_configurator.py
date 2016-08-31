@@ -47,9 +47,9 @@ class ReachWiFi():
 	def parse_wpa_conf_file(self):
 		res = list()
 		b = self.write("cat " + self.wpasupplicant_path).split("\n\n")[1:]
-		for c in b:
-			e = {n.split('=')[0] : n.split('=')[1] for n in c.split()[1:-1]}
-			#TODO: more effective
+		for c in b: 
+			e = {n.strip().split('=')[0] : n.strip().split('=')[1] for n in c.strip().split('\n')[1:-1]}
+                        #TODO: more effective
 			res.append((e.get("bssid") if e.get("bssid") is not None else '', 
 						e.get("ssid") if e.get("ssid") is not None else '', 
 						e.get("psk") if e.get("psk") is not None else ''))
@@ -60,7 +60,7 @@ class ReachWiFi():
 		if self.network_list:
 			for key in self.network_list:
 				for a in cur_scan:
-					if key["ssid"] == a[1]:
+					if key[1] == a[1]:
 						cur_scan.pop(cur_scan.index(a))
 						break
 			return cur_scan
@@ -82,7 +82,7 @@ class ReachWiFi():
 
 	def remove_network(self, ssid):
 		for a in self.network_list:
-			if a[2] == ssid:
+			if a[1] == ssid:
 				ind = self.network_list.index(a)
 				break
 		self.network_list.pop(ind)
@@ -92,5 +92,7 @@ class ReachWiFi():
 
 
 if __name__ == '__main__':
-	a = ReachWiFi(wpasupplicant_path = "/etc/wpa_supplicant/example.conf")
-	#print a.scan()
+	a = ReachWiFi()
+        print a.network_list
+        print a.scan()        
+     
