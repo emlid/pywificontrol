@@ -6,9 +6,21 @@ class ReachWiFi():
 	def __init__(self, hostapd_path = "/etc/hostapd/hostapd.conf", wpasupplicant_path = "/etc/wpa_supplicant/wpa_supplicant.conf"):
 		self.hostapd_path = hostapd_path
 		self.wpasupplicant_path = wpasupplicant_path
+		try:
+			status = self.write("wpa_cli status")
+			if not status:
+				raise
+		except:
+			self.wpa_sup_start = False
+			self.hostapd_start = True
+		else:
+			self.wpa_sup_start = True
+			self.hostapd_start = False
+
 		self.network_list = self.parse_wpa_conf_file()
 	def __del__(self):
 		pass
+
 	def write(self, args):
 		if isinstance(args, str):
 			args = shlex.split(args)
@@ -17,28 +29,38 @@ class ReachWiFi():
 			ps = subprocess.Popen(args, stdout=subprocess.PIPE)
 			ps.wait()
 			(ret, ret2) = ps.communicate()
-			#ret = subprocess.call(args)
 			return ret
 		else:
 			return None
 	#Host part
-	def host_status(self):
-		self.write("ifconfig")
-		self.write("ip link")
-		self.write("service --status-all")
+	def start_host_mode(self):
+		if not self.wpa_sup_start:
+			print "Already in host mode"
+			return
+		self.write("wpa_cli disconnect")
+		self.write("wpa_cli terminate")
+		self.wpa_sup_start = False
+		self.write("hostapd -B " + self.hostapd_path)
+		self.hostapd_start = True
+
+	def start_client_mode(self):
+		if not self.hostapd_start:
+			print "Already in client mode"
+			return
+		self.write("service hostapd stop")
+		self.hostapd_start = False
+		self.start_wpa_supplicant()
+		self.wpa_sup_start = True
+
 
 	#Client part
-	def wpa_sup_info(self):
-		self.write("wpa_supplicant -h")	
-
 	def start_wpa_supplicant(self, interface = 'wlan0'):
 		self.write("wpa_supplicant -B -i " + interface + " -c " + self.wpasupplicant_path)
 
 	def scan(self):
 		self.write("wpa_cli scan")
 		res = self.write("wpa_cli scan_result").split("\n")[2:-1]
-
-		seq = []
+		seq = list()
 		for a in res:
 			r1 = a.split('\t')
 			seq.append((r1[0], r1[4]))
@@ -49,19 +71,18 @@ class ReachWiFi():
 		b = self.write("cat " + self.wpasupplicant_path).split("\n\n")[1:]
 		for c in b: 
 			e = {n.strip().split('=')[0] : n.strip().split('=')[1] for n in c.strip().split('\n')[1:-1]}
-                        #TODO: more effective
+            #TODO: more effective
 			res.append((e.get("bssid") if e.get("bssid") is not None else '', 
-						e.get("ssid") if e.get("ssid") is not None else '', 
-						e.get("psk") if e.get("psk") is not None else ''))
+						e.get("ssid") if e.get("ssid") is not None else ''))
 		return res
 
 	def delta_added_scan(self):
 		cur_scan = self.scan()
 		if self.network_list:
 			for key in self.network_list:	
-                            for a in cur_scan:
-                                if key[1].strip('\"') == a[1]:
-						cur_scan.pop(cur_scan.index(a))
+				for tuple_network in cur_scan:
+					if key[1].strip('\"') == tuple_network[1]:
+						cur_scan.pop(cur_scan.index(tuple_network))
 						break
 			return cur_scan
 		else:
@@ -70,7 +91,7 @@ class ReachWiFi():
 	def add_network(self, args):
 		if self.network_list:
 			for key in self.network_list:
-				if args == key:
+				if args[0] == key[0] & args[1] == key[1]:
 					print "Already added"
 					return None
 		r = self.write("wpa_cli add_network").split("\n")[1]
@@ -80,22 +101,43 @@ class ReachWiFi():
 		#self.write("wpa_cli enable_network %s" % r)
 		self.write("wpa_cli save_config")
 
+	def connect(self, mac_ssid):
+		status = self.write("wpa_cli status")
+		ind_disc = None
+		if status.split('\n')[1].split('=')[1] != "DISCONNECTED":
+			ind_disc = status.split('\n')[4].split('=')[1]
+			self.write("wpa_cli disable_network %s" % ind_disc)
+		try:
+			ind_conn = self.network_list.index(self.find_tuple_ssid(mac_ssid[1]))
+		except:
+			print "No such network"
+			if ind_disc is not None:
+				print "Reconnect"
+				self.write("wpa_cli enable_network %s" % ind_disc)
+			else:
+				print "Disconnect"
+		else:
+			self.write("wpa_cli enable_network %s" % ind_conn)
+		finally:
+			self.write("wpa_cli reconnect")
+
 	def remove_network(self, ssid):
-                ind = None
+		tuple_network = self.find_tuple_ssid(ssid)
+		if tuple_network is not None:
+			index = self.network_list.index(tuple_network)
+			self.network_list.pop(index)
+			self.write("wpa_cli remove_network %s" % index)
+			self.write("wpa_cli save_config")
+			self.write("wpa_cli reconfigure")
+		else:
+			print "No such network"
+
+	def find_tuple_ssid(self, ssid):
 		for a in self.network_list:
 			if a[1].strip('\"') == ssid:
-				ind = self.network_list.index(a)
-				break
-		if ind is not None:
-                    self.network_list.pop(ind)
-		    self.write("wpa_cli remove_network %s" % ind)
-		    self.write("wpa_cli save_config")
-		    self.write("wpa_cli reconfigure")
+				return a
+		return None
 
 
 if __name__ == '__main__':
 	a = ReachWiFi()
-        print a.network_list
-        print a.scan()        
-#        a.remove_network('ABC')
-
