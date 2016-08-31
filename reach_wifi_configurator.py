@@ -58,9 +58,9 @@ class ReachWiFi():
 	def delta_added_scan(self):
 		cur_scan = self.scan()
 		if self.network_list:
-			for key in self.network_list:
-				for a in cur_scan:
-					if key[1] == a[1]:
+			for key in self.network_list:	
+                            for a in cur_scan:
+                                if key[1].strip('\"') == a[1]:
 						cur_scan.pop(cur_scan.index(a))
 						break
 			return cur_scan
@@ -81,18 +81,21 @@ class ReachWiFi():
 		self.write("wpa_cli save_config")
 
 	def remove_network(self, ssid):
+                ind = None
 		for a in self.network_list:
-			if a[1] == ssid:
+			if a[1].strip('\"') == ssid:
 				ind = self.network_list.index(a)
 				break
-		self.network_list.pop(ind)
-		self.write("wpa_cli remove_network %s" % ind)
-		self.write("wpa_cli save_config")
-		self.write("wpa_cli reconfigure")
+		if ind is not None:
+                    self.network_list.pop(ind)
+		    self.write("wpa_cli remove_network %s" % ind)
+		    self.write("wpa_cli save_config")
+		    self.write("wpa_cli reconfigure")
 
 
 if __name__ == '__main__':
 	a = ReachWiFi()
         print a.network_list
         print a.scan()        
-     
+#        a.remove_network('ABC')
+
