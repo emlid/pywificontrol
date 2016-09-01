@@ -38,7 +38,7 @@ class ReachWiFi():
 			print "Already in host mode"
 			return
 		self.write("wpa_cli disconnect")
-		self.write("wpa_cli terminate")
+		self.write("systemctl stop wpa_supplicant.service")
 		self.wpa_sup_start = False
 		self.write("hostapd -B " + self.hostapd_path)
 		self.hostapd_start = True
@@ -47,7 +47,7 @@ class ReachWiFi():
 		if not self.hostapd_start:
 			print "Already in client mode"
 			return
-		self.write("service hostapd stop")
+		self.write("systemctl stop hostapd.service")
 		self.hostapd_start = False
 		self.start_wpa_supplicant()
 		self.wpa_sup_start = True
