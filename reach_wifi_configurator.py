@@ -40,7 +40,8 @@ class ReachWiFi():
 		self.write("wpa_cli disconnect")
 		self.write("systemctl stop wpa_supplicant.service")
 		self.wpa_sup_start = False
-		self.write("hostapd -B " + self.hostapd_path)
+		self.write("systemctl stop hostapd")
+		#self.write("hostapd -B " + self.hostapd_path)
 		self.hostapd_start = True
 
 	def start_client_mode(self):
