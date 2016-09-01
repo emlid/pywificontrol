@@ -25,7 +25,7 @@ class ReachWiFi():
 		if isinstance(args, str):
 			args = shlex.split(args)
 		if  isinstance(args, list):
-			print args
+			#print args
 			ps = subprocess.Popen(args, stdout=subprocess.PIPE)
 			ps.wait()
 			(ret, ret2) = ps.communicate()
@@ -40,7 +40,7 @@ class ReachWiFi():
 		self.write("wpa_cli disconnect")
 		self.write("systemctl stop wpa_supplicant.service")
 		self.wpa_sup_start = False
-		self.write("systemctl start hostapd")
+		self.write("systemctl start hostapd.service")
 		#self.write("hostapd -B " + self.hostapd_path)
 		self.hostapd_start = True
 
@@ -57,7 +57,7 @@ class ReachWiFi():
 	#Client part
 	def start_wpa_supplicant(self, interface = 'wlan0'):
 		#self.write("wpa_supplicant -B -i " + interface + " -c " + self.wpasupplicant_path)
-		self.write("systemctl start wpa_supplicant")
+		self.write("systemctl start wpa_supplicant.service")
 
 	def scan(self):
 		self.write("wpa_cli scan")
