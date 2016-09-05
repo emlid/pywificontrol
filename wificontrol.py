@@ -10,7 +10,7 @@ class ReachWiFi():
 
         self.connection_info = None
         self.connection_timeout = 5
-        self.connectiong_thread = threading.Thread(target = self.connection)
+        self.connection_thread = None 
         
         try:
             status = self.write("wpa_cli status")
@@ -122,7 +122,8 @@ class ReachWiFi():
         if not self.connectiong_thread.isAlive():
             self.connection_info = mac_ssid
             self.connection_timeout = timeout
-            self.connectiong_thread.start()
+            self.connection_thread = threading.Thread(target = self.connection)
+            self.connection_thread.start()
         else:
             print "Still in connection...Try again later."
 
@@ -189,6 +190,5 @@ class ReachWiFi():
 
 
 if __name__ == '__main__':
-    import threading
     a = ReachWiFi()
     a.scan()
