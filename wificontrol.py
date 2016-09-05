@@ -13,11 +13,12 @@ class ReachWiFi():
         except Exception:
             self.wpa_sup_start = False
             self.hostapd_start = True
+            self.network_list = None
         else:
             self.wpa_sup_start = True
             self.hostapd_start = False
+            self.network_list = self.parse_wpa_conf_file()
 
-        self.network_list = self.parse_wpa_conf_file()
     def __del__(self):
         pass
 
@@ -52,6 +53,7 @@ class ReachWiFi():
         self.hostapd_start = False
         self.start_wpa_supplicant()
         self.wpa_sup_start = True
+        self.network_list = self.parse_wpa_conf_file()
 
 
     #Client part
@@ -104,29 +106,35 @@ class ReachWiFi():
         #self.write("wpa_cli enable_network %s" % r)
         self.write("wpa_cli save_config")
 
-    def disconnect(self, mac_ssid):
+    def disconnect(self):
         self.write("wpa_cli disconnect")    
 
-    def connect(self, mac_ssid):
-        status = self.write("wpa_cli status")
+    def connect(self, mac_ssid, timeout = 5):
         ind_disc = None
-        if status.split('\n')[1].split('=')[1] != "DISCONNECTED":
-            ind_disc = status.split('\n')[4].split('=')[1]
+        if self.network_state("wpa_state") == "COMPLETED":
+            ind_disc = self.network_state("id")
             self.write("wpa_cli disable_network %s" % ind_disc)
         try:
             ind_conn = self.network_list.index(self.find_tuple_ssid(mac_ssid[1].encode('utf-8')))
-        except:
-            print "No such network"
-            if ind_disc is not None:
-                print "Reconnect"
-                self.write("wpa_cli enable_network %s" % ind_disc)
-            else:
-                print "Disconnect"
+        except ValueError:
+            print "No such network. Disconnect..."
+            self.disconnect()
+            return False
         else:
             self.write("wpa_cli enable_network %s" % ind_conn)
+            start_time = time.time()
+            while self.network_state("wpa_state") != "COMPLETED":
+                if (time.time() - start_time) > timeout:
+                    print "Time is up. "
+                    return False
+            if (self.network_state("ssid") != mac_ssid[1].encode('utf-8')):
+                print ("Unable to connect %s. Disconnect..." % mac_ssid[1].encode('utf-8'))
+                self.disconnect()
+                return False
         finally:
-            self.network_list = self.parse_wpa_conf_file()
             self.write("wpa_cli reconnect")
+            self.network_list = self.parse_wpa_conf_file()
+            return True
 
     def remove_network(self, ssid):
         tuple_network = self.find_tuple_ssid(ssid.encode('utf-8'))
@@ -145,9 +153,25 @@ class ReachWiFi():
                 return a
         return None
 
+    def network_parameter(self, parameter):
+        if not isinstance(parameter, str):
+            print "Wrong parameter. Input str"
+            return None
+        network_status = self.write("wpa_cli status").split("\n")[1:-1]
+        for network_params in network_status:
+            try:
+                network_params.split('=').index(parameter)
+                return network_params.split('=')[1]
+            except ValueError:
+                pass
+        print "No such value in status list"
+        return None
+
+
     def set_bssid_to_network(self, network_info):
         pass
 
 
 if __name__ == '__main__':
     a = ReachWiFi()
+    
