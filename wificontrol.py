@@ -1,11 +1,17 @@
 import subprocess
 import shlex
 import time
+import threading
 
 class ReachWiFi():
     def __init__(self, hostapd_path = "/etc/hostapd/hostapd.conf", wpasupplicant_path = "/etc/wpa_supplicant/wpa_supplicant.conf"):
         self.hostapd_path = hostapd_path
         self.wpasupplicant_path = wpasupplicant_path
+
+        self.connection_info = None
+        self.connection_timeout = 5
+        self.connectiong_thread = threading.Thread(target = connection)
+        
         try:
             status = self.write("wpa_cli status")
             if not status:
@@ -68,7 +74,8 @@ class ReachWiFi():
         scan_result = self.write("wpa_cli scan_result").split("\n")[2:-1]
         result = list()
         for network in scan_result:
-            result.append((network.split('\t')[0], network.split('\t')[4]))
+            result.append((network.split('\t')[0], network.split('\t')[4].decode('string_escape')))
+            #print network.split('\t')[0] + " " + network.split('\t')[4].decode('string_escape')
         return result
 
     def show_network_list(self):
@@ -112,6 +119,15 @@ class ReachWiFi():
         self.write("wpa_cli disconnect")    
 
     def connect(self, mac_ssid, timeout = 5):
+        if not self.connectiong_thread.isAlive():
+            self.connection_info = mac_ssid
+            self.connection_timeout = timeout
+            self.connectiong_thread.start()
+        else
+            print "Still in connection...Try again later."
+
+
+    def connection(self):
         ind_disc = None
         if self.network_parameter("wpa_state") == "COMPLETED":
             ind_disc = self.network_parameter("id")
@@ -133,9 +149,8 @@ class ReachWiFi():
                 print ("Unable to connect %s. Disconnect..." % mac_ssid[1].encode('utf-8'))
                 self.disconnect()
                 return False
-        finally:
-            self.write("wpa_cli reconnect")
-            return True
+        self.write("wpa_cli reconnect")
+        return True
 
     def remove_network(self, ssid):
         tuple_network = self.find_tuple_ssid(ssid.encode('utf-8'))
@@ -174,5 +189,6 @@ class ReachWiFi():
 
 
 if __name__ == '__main__':
+    import threading
     a = ReachWiFi()
-    
+    a.scan()
