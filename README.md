@@ -3,9 +3,11 @@
 Wificontrol is a module for management wireless networks.
 That module provide two modes of wireless interface:
 
-1. Like AccessPoint in host mode.
+	1. Like AccessPoint in host mode.
 
-2. Like Client in client mode.
+	2. Like Client in client mode.
+
+This module works only in root mode
 
 # WiFiControl API
  - ReachWiFi() - constructor
