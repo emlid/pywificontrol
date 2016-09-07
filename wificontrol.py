@@ -112,9 +112,7 @@ class ReachWiFi():
                     if key[1].strip('\"') == tuple_network[1]:
                         cur_scan.pop(cur_scan.index(tuple_network))
                         break
-            return cur_scan
-        else:
-            return cur_scan
+        return cur_scan
 
     def add_network(self, args):
         try:
@@ -155,7 +153,7 @@ class ReachWiFi():
                 self.connection_timer = None
                 self.stop_connection_thread()
             except AttributeError:
-                pass
+                pass`
         self.connection_thread = threading.Thread(target = self.connection, args = [mac_ssid, callback, socketio])
         self.connection_timer = threading.Timer(timeout, self.stop_connection_thread)
         self.connection_event.set()
@@ -192,9 +190,9 @@ class ReachWiFi():
         self.connection_thread.join()
         self.connection_thread = None
 
-    def remove_network(self, ssid):
+    def remove_network(self, mac_ssid):
         try:
-            tuple_network = self.find_tuple_ssid(ssid.encode('utf-8'))
+            tuple_network = self.find_tuple_ssid(mac_ssid[1].encode('utf-8'))
             if tuple_network is None:
                 raise Exception("No such network")
             index = self.network_list.index(tuple_network)
