@@ -108,6 +108,9 @@ class ReachWiFi():
         except LaunchException:
             return False
 
+    def list_network(self):
+        return self.network_list
+
     def show_network_list(self):
         try:
             return self.launch("wpa_cli list_network").split("\n")[2:-1]

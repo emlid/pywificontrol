@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='wificontrol',
-    version='0.0.1.dev',
+    version='0.0.2.dev',
     author='Ivan Sapozhkov',
     author_email='i.sapozhkov.93@gmail.com',
     py_modules=['wificontrol'],
