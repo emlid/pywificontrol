@@ -3,7 +3,13 @@ import shlex
 import time
 import threading
 
-class WriteException(Exception):
+class LaunchException(Exception):
+    pass
+
+class ModeChangeException(Exception):
+    pass
+
+class ExecutionError(Exception):
     pass
 
 class ReachWiFi():
@@ -11,16 +17,29 @@ class ReachWiFi():
         'hostapd_path' : "/etc/hostapd/hostapd.conf",
         'wpa_supplicant_path' : "/etc/wpa_supplicant/wpa_supplicant.conf",
     }
+    launch_start_wpa_service = "systemctl start wpa_supplicant.service"
+    launch_stop_wpa_service = "systemctl stop wpa_supplicant.service"
+    launch_start_hostapd_service = "systemctl start hostapd.service"
+    launch_stop_hostapd_service = "systemctl stop hostapd.service"
+
     def __init__(self):
         self.hostapd_path = self.default_path['hostapd_path']
         self.wpasupplicant_path = self.default_path['wpa_supplicant_path']
+
+        try:
+            self.launch("wpa_supplicant")
+            self.launch("hostapd")
+        except OSError:
+            raise OSError
+        except LaunchException:
+            pass
         
         self.connection_thread = None
         self.connection_timer = None
         self.connection_event = threading.Event()
         try: 
-            self.write("wpa_cli status")
-        except WriteException:
+            self.launch("wpa_cli status")
+        except LaunchException:
             self.wpa_sup_start = False
             self.hostapd_start = True
             self.network_list = None
@@ -29,7 +48,7 @@ class ReachWiFi():
             self.hostapd_start = False
             self.network_list = self.parse_wpa_conf_file()
 
-    def write(self, args): #todo other return value
+    def launch(self, args): #todo other return value
         try:
             result = shlex.split(args)
             args = result
@@ -39,7 +58,7 @@ class ReachWiFi():
         ps.wait()
         (out_return, err_return) = ps.communicate()
         if err_return:
-            raise WriteException(err_return)
+            raise LaunchException(err_return)
         else:
             return out_return
 
@@ -47,52 +66,52 @@ class ReachWiFi():
     def start_host_mode(self):
         try:
             if not self.wpa_sup_start:
-                raise Exception("Already in host mode")
+                raise ModeChangeException("Already in host mode")
             self.disconnect()
-            self.write("systemctl stop wpa_supplicant.service")
+            self.launch(self.launch_stop_wpa_service)
             self.wpa_sup_start = False
-            self.write("systemctl start hostapd.service")
+            self.launch(self.launch_start_hostapd_service)
             self.hostapd_start = True
             return True
-        except (WriteException, Exception):
+        except (LaunchException, ModeChangeException):
             return False
 
     def start_client_mode(self):
         try:
             if not self.hostapd_start:
-                raise Exception("Already in client mode")
-            self.write("systemctl stop hostapd.service")
+                raise ModeChangeException("Already in client mode")
+            self.launch(self.launch_stop_hostapd_service)
             self.hostapd_start = False
-            self.write("systemctl start wpa_supplicant.service")
+            self.launch(self.launch_start_wpa_service)
             self.wpa_sup_start = True
             self.network_list = self.parse_wpa_conf_file()
             return True
-        except (WriteException, Exception):
+        except (LaunchException, ModeChangeException):
             return False
 
 
     #Client part
     def scan(self):
         try:
-            self.write("wpa_cli scan")
+            self.launch("wpa_cli scan")
             return True
-        except WriteException:
+        except LaunchException:
             return False
 
     def scan_results(self):
         try:
-            scan_result = self.write("wpa_cli scan_result").split("\n")[2:-1]
+            scan_result = self.launch("wpa_cli scan_result").split("\n")[2:-1]
             result = list()
             for network in scan_result:
                 result.append((network.split('\t')[0], network.split('\t')[4].decode('string_escape')))
             return result
-        except WriteException:
+        except LaunchException:
             return False
 
     def show_network_list(self):
         try:
-            return self.write("wpa_cli list_network").split("\n")[2:-1]
-        except WriteException:
+            return self.launch("wpa_cli list_network").split("\n")[2:-1]
+        except LaunchException:
             return None
 
     def parse_wpa_conf_file(self):
@@ -119,15 +138,15 @@ class ReachWiFi():
             if self.network_list:
                 for key in self.network_list:
                     if (args[0].encode('utf-8') == key[0]) & (args[1].encode('utf-8') == key[1]):
-                        raise Exception("Already added")
-            r = self.write("wpa_cli add_network").split("\n")[1]
-            self.write(['wpa_cli', 'set_network', r, 'bssid', args[0]])
-            self.write(['wpa_cli', 'set_network', r, 'ssid', '\"'+args[1]+'\"'])
-            self.write(['wpa_cli', 'set_network', r, 'psk', '\"'+args[2]+'\"'])
-            self.write("wpa_cli save_config")
+                        raise ExecutionError("Already added")
+            r = self.launch("wpa_cli add_network").split("\n")[1]
+            self.launch(['wpa_cli', 'set_network', r, 'bssid', args[0]])
+            self.launch(['wpa_cli', 'set_network', r, 'ssid', '\"'+args[1]+'\"'])
+            self.launch(['wpa_cli', 'set_network', r, 'psk', '\"'+args[2]+'\"'])
+            self.launch("wpa_cli save_config")
             self.network_list = self.parse_wpa_conf_file()
             return True
-        except (WriteException, Exception):
+        except (LaunchException, ExecutionError):
             return False
 
 
@@ -135,14 +154,14 @@ class ReachWiFi():
         try:
             state = self.network_parameter("wpa_state")
             if state is None:
-                raise Exception
+                raise ExecutionError
             if state != "DISCONNECTED":
                 current_network_id = self.try_find_current_network()
                 if current_network_id is not None:
-                    self.write("wpa_cli disable_network " + current_network_id)
-            self.write("wpa_cli disconnect")    
+                    self.launch("wpa_cli disable_network " + current_network_id)
+            self.launch("wpa_cli disconnect")    
             return True
-        except (WriteException, Exception):
+        except (LaunchException, ExecutionError):
             return False
 
     def connect(self, mac_ssid, callback = None, socketio = None, timeout = 50):
@@ -153,7 +172,7 @@ class ReachWiFi():
                 self.connection_timer = None
                 self.stop_connection_thread()
             except AttributeError:
-                pass`
+                pass
         self.connection_thread = threading.Thread(target = self.connection, args = [mac_ssid, callback, socketio])
         self.connection_timer = threading.Timer(timeout, self.stop_connection_thread)
         self.connection_event.set()
@@ -164,20 +183,20 @@ class ReachWiFi():
     def connection(self, mac_ssid, callback, socketio):
         try:
             if not self.disconnect():
-                raise Exception("No wpa_supplicant service")
+                raise ExecutionError("No wpa_supplicant service")
             ind_conn = self.network_list.index(self.find_tuple_ssid(mac_ssid[1].encode('utf-8')))
-            self.write("wpa_cli enable_network %s" % ind_conn)
+            self.launch("wpa_cli enable_network %s" % ind_conn)
             while self.network_parameter("wpa_state") != "COMPLETED":
                 if not self.connection_event.is_set():
-                    raise Exception("Time is out. Disconnect...")
+                    raise ExecutionError("Time is out. Disconnect...")
             if (self.network_parameter("ssid") != mac_ssid[1].encode('utf-8')):
-                raise Exception("Unable to connect %s. Disconnect..." % mac_ssid[1].encode('utf-8'))
+                raise ExecutionError("Unable to connect %s. Disconnect..." % mac_ssid[1].encode('utf-8'))
             if callback is not None:
                 callback(socketio, True)
             self.connection_timer.cancel()
             return True
         
-        except (ValueError, Exception, WriteException), e:
+        except (ValueError, ExecutionError, LaunchException), e:
             self.disconnect()
             print e
             if callback is not None:
@@ -194,14 +213,14 @@ class ReachWiFi():
         try:
             tuple_network = self.find_tuple_ssid(mac_ssid[1].encode('utf-8'))
             if tuple_network is None:
-                raise Exception("No such network")
+                raise ExecutionError("No such network")
             index = self.network_list.index(tuple_network)
             self.network_list.pop(index)
-            self.write("wpa_cli remove_network %s" % index)
-            self.write("wpa_cli save_config")
-            self.write("wpa_cli reconfigure")
+            self.launch("wpa_cli remove_network %s" % index)
+            self.launch("wpa_cli save_config")
+            self.launch("wpa_cli reconfigure")
             self.network_list = self.parse_wpa_conf_file()
-        except (WriteException, Exception):
+        except (LaunchException, ExecutionError):
             return False
 
     def try_find_current_network(self):
@@ -221,7 +240,7 @@ class ReachWiFi():
 
     def network_parameter(self, parameter):
         try:
-            network_status = self.write("wpa_cli status").split("\n")[1:-1]
+            network_status = self.launch("wpa_cli status").split("\n")[1:-1]
             for network_params in network_status:
                 try:
                     network_params.split('=').index(parameter)
@@ -230,7 +249,7 @@ class ReachWiFi():
                     pass
             print "No such value in status list"
             return None
-        except WriteException:
+        except LaunchException:
             return None
 
 if __name__ == '__main__':
