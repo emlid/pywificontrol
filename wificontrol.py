@@ -1,3 +1,26 @@
+# wificontrol code is placed under the GPL license.
+# Written by Ivan Sapozhkov (ivan.sapozhkov@emlid.com)
+# Copyright (c) 2016, Emlid Limited
+# All rights reserved.
+
+# If you are interested in using wificontrol code as a part of a
+# closed source project, please contact Emlid Limited (info@emlid.com).
+
+# This file is part of wificontrol.
+
+# wificontrol is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# wificontrol is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
+
 import subprocess
 import shlex
 import threading
@@ -141,11 +164,11 @@ class ReachWiFi():
                 if self.connection_timer.isAlive():
                     self.connection_timer.cancel()
                 self.connection_timer = None
-                self.stop_connection_thread()
+                self.stop_connecting()
             except AttributeError:
                 pass
         self.connection_thread = threading.Thread(target = self.connect, args = (mac_ssid, callback, args))
-        self.connection_timer = threading.Timer(timeout, self.stop_connection_thread)
+        self.connection_timer = threading.Timer(timeout, self.stop_connecting)
         self.connection_event.set()
         self.connection_thread.start()
         self.connection_timer.start()
@@ -178,7 +201,7 @@ class ReachWiFi():
             callback(result, args)
         self.connection_thread = None
 
-    def stop_connection_thread(self):
+    def stop_connecting(self):
         self.connection_event.clear()
         self.connection_thread.join()
 

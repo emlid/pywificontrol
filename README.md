@@ -7,25 +7,47 @@ That module provide two modes of wireless interface:
 
  2. Like Client in client mode.
 
-
+Functions of module based on two packages: hostapd (AP-mode) and wpa_supplicant (Client-mode).
+For successful using intall it:
+```bash
+sudo apt-get update
+sudo apt-get install hostapd
+sudo apt-get install wpa_supplicant
+```
 This module works only in root mode
+
+# Install
+
+`make install`
 
 # WiFiControl API
 
- - ReachWiFi() - constructor
+ - `ReachWiFi()` - constructor
  
- - start_host_mode() - run WiFi interface as wireless AP mode
- - start_client_mode() - run WiFi interface as client mode
+ - `run_host_mode()` - run WiFi interface as wireless AP mode
+ - `run_client_mode()` - run WiFi interface as client mode
  
- - scan() - start scan available networks
- - scan_result() - return scan results. Return value: list[(bssid, ssid)]
- - list_network() - return list of added networks. Return value: list[(bssid, ssid)]
- - delta_added_scan() - return list of available networks without already added. Return value: list[(bssid, ssid)]
+ - `start_scanning()` - start scan available networks
+ - `get_scan_results()` - return scan results. Return value: list[(bssid, ssid)]
+ - `get_list_added_networks()` - return list of added networks. Return value: list[(bssid, ssid)]
+ - `get_scan_results_without_added_networks()` - return list of available networks without already added. Return value: list[(bssid, ssid)]
 
- - add_network(tuple(bssid, ssid, passkey)) - add network to the network_list
- - remove_network(tuple(bssid, ssid)) - remove network
+ - `add_network(tuple(bssid, ssid, passkey))` - add network to the network_list
+ - `remove_network(tuple(bssid, ssid))` - remove network
  
- - connect(tuple(bssid, ssid), socketio, callback, timeout) - connect to network in network_list
- - disconnect() - disconnect from currend network
+ - `start_connecting(tuple(bssid, ssid), callback = None, args = [], timeout = const)` - connect to network in network_list.
+  Connetion to network continues a few seconds (~5-20) into a background Thread.
+  To notify user about connection ending uses callback functions.
+  Prototype of callback function is `foo(result, args)`. 
+  Reasones for ending connection are:
+    * Successful connection
+	* Timeout error
+	* Retry of connection
+	* User request of end connection
+ - `stop_connecting()` - stop connection thread
+ - `disconnect()` - disconnect from current network
  
- 
+#Exceptions
+
+If you don't have hostapd or wpa_supplicant package, `__init__` function raise `OSError` exception. 
+
