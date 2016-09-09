@@ -1,13 +1,13 @@
 # WiFiControl
 
-Wificontrol is a module for management wireless networks.
+**Wificontrol** is a module for management wireless networks.
 That module provide two modes of wireless interface:
 
  1. Like AccessPoint in host mode.
 
  2. Like Client in client mode.
 
-Functions of module based on two packages: hostapd (AP-mode) and wpa_supplicant (Client-mode).
+Functions of module based on two packages: *hostapd* (AP-mode) and *wpa_supplicant* (Client-mode).  
 For successful using intall it:
 ```bash
 sudo apt-get update
@@ -35,10 +35,10 @@ This module works only in root mode
  - `add_network(tuple(bssid, ssid, passkey))` - add network to the network_list
  - `remove_network(tuple(bssid, ssid))` - remove network
  
- - `start_connecting(tuple(bssid, ssid), callback = None, args = [], timeout = const)` - connect to network in network_list.
-  Connetion to network continues a few seconds (~5-20) into a background Thread.
-  To notify user about connection ending uses callback functions.
-  Prototype of callback function is `foo(result, args)`. 
+ - `start_connecting(tuple(bssid, ssid), callback = None, args = [], timeout = const)` - connect to network in network_list.  
+  Connetion to network continues a few seconds (~5-20) into a background Thread.  
+  To notify user about connection ending uses callback functions.  
+  Prototype of callback function is `foo(result, args)`.   
   Reasones for ending connection are:
     * Successful connection
 	* Timeout error
