@@ -34,10 +34,11 @@ class ModeChangeException(Exception):
 class ExecutionError(Exception):
     pass
 
-class ReachWiFi():
+class ReachWiFi(object):
     default_path = {
         'hostapd_path' : "/etc/hostapd/hostapd.conf",
         'wpa_supplicant_path' : "/etc/wpa_supplicant/wpa_supplicant.conf",
+        'p2p_supplicant_path' : "/etc/wpa_supplicant/p2p_supplicant.conf"
     }
     launch_start_wpa_service = "systemctl start wpa_supplicant.service"
     launch_stop_wpa_service = "systemctl stop wpa_supplicant.service"
@@ -47,6 +48,7 @@ class ReachWiFi():
     def __init__(self):
         self.hostapd_path = self.default_path['hostapd_path']
         self.wpa_supplicant_path = self.default_path['wpa_supplicant_path']
+        self.p2p_supplicant_path = self.default_path['p2p_supplicant_path']
 
         try:
             self.launch("wpa_supplicant")
@@ -96,6 +98,32 @@ class ReachWiFi():
             return True
         except (LaunchException, ModeChangeException):
             return False
+
+    def set_hostap_name(self, name = 'reach'):
+        try:
+            self.launch("sed -i s/^ssid=.*/ssid={}/ {}".format(name, self.hostapd_path))
+            return True
+        except LaunchException:
+            return False
+
+    def get_hostap_name(self):
+        try:
+            return self.launch("grep \'^ssid=\' {}".format(a.hostapd_path))[5:-1]
+        except LaunchException:
+            return None
+
+    def set_p2p_name(self, name = 'reach'):
+        try:
+            self.launch("sed -i s/^p2p_ssid_postfix=.*/p2p_ssid_postfix={}/ {}".format(name, self.p2p_supplicant_path))
+            return True
+        except LaunchException:
+            return False
+
+    def get_p2p_name(self):
+        try:
+            return self.launch("grep \'^p2p_ssid_postfix=\' {}".format(a.p2p_supplicant_path))[17:-1]
+        except LaunchException:
+            return None
 
     #Client mode part
     def start_scanning(self):

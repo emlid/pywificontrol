@@ -26,6 +26,10 @@ This module works only in root mode
  
  - `run_host_mode()` - run WiFi interface as wireless AP mode
  - `run_client_mode()` - run WiFi interface as client mode
+ - `set_hostap_name(newName)` - change name of your Access Point in AP mode.
+ - `get_hostap_name()` - return name of your Access Point in AP mode.
+ - `set_p2p_name(newName)` - change name of your devise for local access in Client mode. 
+ - `get_p2p_name` - retirn name of your devise for local access in Client mode.
  
  - `start_scanning()` - start scan available networks
  - `get_scan_results()` - return scan results. Return value: list[(bssid, ssid)]
