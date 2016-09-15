@@ -25,8 +25,8 @@ This module works only in root mode
  - `ReachWiFi()` - constructor.
 
  
- - `run_host_mode()` - run WiFi interface as wireless AP mode
- - `run_client_mode()` - run WiFi interface as client mode
+ - `start_host_mode()` - run WiFi interface as wireless AP mode
+ - `start_client_mode()` - run WiFi interface as client mode
  - `set_hostap_name(newName)` - change name of your Access Point in AP mode
  - `get_hostap_name()` - return name of your Access Point in AP mode
  - `set_p2p_name(newName)` - change name of your devise for local access in Client mode
@@ -34,16 +34,16 @@ This module works only in root mode
 
  
  - `start_scanning()` - start scan available networks.
- - `get_scan_results()` - return scan results. Return value: `list[(bssid, ssid)]`
- - `get_list_added_networks()` - return list of added networks. Return value: `list[(bssid, ssid)]`
- - `get_scan_results_without_added_networks()` - return list of available networks without already added. Return value: `list[(bssid, ssid)]`
+ - `get_scan_results()` - return scan results. Return value: `list[{'mac address':bssid,'ssid':ssid}]`
+ - `get_added_networks()` - return list of added networks. Return value: `list[{'mac address':bssid, 'ssid':ssid}]`
+ - `get_unknown_networks()` - return list of available networks without already added. Return value: `list[{'mac address':bssid, 'ssid':ssid}]`
 
 
- - `add_network(tuple(bssid, ssid, passkey))` - add network to the network_list
- - `remove_network(tuple(bssid, ssid))` - remove network
+ - `add_network(dict{'mac address':bssid, 'ssid':ssid, 'password':psk})` - add network to the network_list
+ - `remove_network(dict{'mac address':bssid, 'ssid':ssid})` - remove network
  
- - `start_connecting(tuple(bssid, ssid), callback = None, args = [], timeout = const)` - connect to network in network_list.  
-  Connetion to network continues a few seconds (~5-20) into a background Thread.  
+ - `start_connecting(dict{'mac address':bssid, 'ssid':ssid}, callback = None, args = [], timeout = const)` - connect to network in network_list.  
+  Connetion to network continue for a several seconds into a background Thread.  
   To notify user about connection ending uses callback functions.  
   Prototype of callback function is `foo(result, args)`.  
   There are some reasones for ending connection:
