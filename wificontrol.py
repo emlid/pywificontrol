@@ -340,7 +340,8 @@ class ReachWiFi(object):
     # OLNY FOR THREAD!!!
     def try_to_connect(self, mac_ssid):
         index_network_for_connect = self.find_network_id_from_ssid(mac_ssid["ssid"])
-        if self.enable_network(index_network_for_connect):
+        if (self.reconnect() and
+            self.enable_network(index_network_for_connect)):
             if self.wait_untill_connection_complete():
                 return True
         return False
@@ -356,12 +357,12 @@ class ReachWiFi(object):
     def wait_untill_connection_complete(self):
         while self.network_parameter("wpa_state") != "COMPLETED":
             if not self.connection_event.is_set():
+                print "Can't connect to network"
                 return False
         return True
 
     def check_correct_connection(self, mac_ssid):
-        if ((self.network_parameter("ssid") != mac_ssid["ssid"]) or
-                (self.network_parameter("bssid") != mac_ssid["mac address"])):
+        if ((self.network_parameter("ssid") != mac_ssid["ssid"])):
             return False
         return True
 
