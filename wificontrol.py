@@ -219,11 +219,11 @@ class ReachWiFi(object):
         if (not self.network_not_added(mac_ssid) and
             self.try_to_connect(mac_ssid) and
             self.check_correct_connection(mac_ssid)):
-            self.connection_timer.cancel()
             result = True
         else:
             self.disconnect()
 
+        self.connection_timer.cancel()
         self.connection_thread = None
         if callback is not None:
             if args is not None:
