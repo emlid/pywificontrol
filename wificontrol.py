@@ -218,7 +218,7 @@ class ReachWiFi(object):
         self.disconnect()
         if (not self.network_not_added(mac_ssid) and
             self.try_to_connect(mac_ssid) and
-                self.check_correct_connection(mac_ssid)):
+            self.check_correct_connection(mac_ssid)):
             self.connection_timer.cancel()
             result = True
         else:
@@ -279,14 +279,15 @@ class ReachWiFi(object):
     def use_wpa_cli_add_network(self, mac_ssid_psk):
         try:
             number = subprocess.check_output(['wpa_cli', 'add_network'],
-                                             stderr=subprocess.PIPE)
-            subprocess.call(['wpa_cli', 'set_network', number, 'ssid', 
+                    stderr=subprocess.PIPE).strip().split("\n")[-1]
+            print number
+            subprocess.check_output(['wpa_cli', 'set_network', number, 'ssid', 
                                      '\"{}\"'.format(mac_ssid_psk['ssid'])],
                                     stderr=subprocess.PIPE)
-            subprocess.call(['wpa_cli', 'set_network', number, 'bssid', 
+            subprocess.check_output(['wpa_cli', 'set_network', number, 'bssid', 
                                      mac_ssid_psk['mac address']],
                                     stderr=subprocess.PIPE)
-            subprocess.call(['wpa_cli', 'set_network', number, 'psk', 
+            subprocess.check_output(['wpa_cli', 'set_network', number, 'psk', 
                                      '\"{}\"'.format(mac_ssid_psk['password'])],
                                     stderr=subprocess.PIPE)
             return True
@@ -336,16 +337,16 @@ class ReachWiFi(object):
     # CONNECT
     # OLNY FOR THREAD!!!
     def try_to_connect(self, mac_ssid):
-        index_network_for_connect = self.find_network_id_from_ssid(mac_ssid)
+        index_network_for_connect = self.find_network_id_from_ssid(mac_ssid["ssid"])
         if self.enable_network(index_network_for_connect):
             if self.wait_untill_connection_complete():
                 return True
         return False
 
-    def enable_network(self, id):
+    def enable_network(self, network_id):
         try:
             self.launch("wpa_cli enable_network {}".format(
-                index_network_for_connect))
+                network_id))
             return True
         except subprocess.CalledProcessError:
             return False
@@ -372,13 +373,16 @@ class ReachWiFi(object):
     # CONNECT SAFETY CALLBACK
     def revert_on_connect_failure(self, result, network_state):
         if not result:
-            return_to_state(network_state)
+            self.return_to_state(network_state)
 
     def return_to_state(self, network_state):
         if network_state[0] == "hostapd":
             self.start_host_mode()
         elif network_state[0] == "wpa_supplicant":
-            self.start_connecting(network_state[1])
+            if network_state[1] is not None:
+                self.start_connecting(network_state[1])
+            else:
+                self.start_host_mode()
 
     # DISCONNETCT
     def disable_current_network(self):
@@ -433,6 +437,7 @@ class ReachWiFi(object):
             for network in network_list:
                 if network.split('\t')[-1].find('CURRENT') != -1:
                     return network.split('\t')[0]
+            return -1       
         except subprocess.CalledProcessError:
             return -1
 
