@@ -74,7 +74,7 @@ class ReachWiFi(object):
         except subprocess.CalledProcessError:
             self.wpa_supplicant_start = False
             self.hostapd_start = True
-            self.network_list = None
+            self.network_list = list()
         else:
             self.wpa_supplicant_start = True
             self.hostapd_start = False
@@ -174,7 +174,7 @@ class ReachWiFi(object):
         return result
 
     def add_network(self, mac_ssid_psk):
-        if (self.network_not_added(mac_ssid_psk.pop("password")) and
+        if (self.network_not_added(mac_ssid_psk) and
             self.add_network_to_wpa_supplicant_file(mac_ssid_psk) and
                 self.reconfigure()):
             self.network_list.append(
@@ -253,11 +253,18 @@ class ReachWiFi(object):
     def network_not_added(self, mac_ssid):
         for network in self.network_list:
             if (mac_ssid["mac address"] == network["mac address"] and
-                    mac_ssid["ssid"] == network["ssid"]):
+                mac_ssid["ssid"] == network["ssid"]):
                 return False
         return True
 
     def add_network_to_wpa_supplicant_file(self, mac_ssid_psk):
+        if self.hostapd_start:
+            return self.write_to_wpa_supplicant_file(mac_ssid_psk)
+        else:
+            return self.use_wpa_cli_add_network(mac_ssid_psk)
+
+
+    def write_to_wpa_supplicant_file(self, mac_ssid_psk):
         try:
             wpa_supplicant_file = open(self.wpa_supplicant_path, 'a')
             wpa_supplicant_file.write(wpa_template.format(
@@ -267,6 +274,23 @@ class ReachWiFi(object):
             wpa_supplicant_file.close()
             return True
         except IOError as ValueError:
+            return False
+
+    def use_wpa_cli_add_network(self, mac_ssid_psk):
+        try:
+            number = subprocess.check_output(['wpa_cli', 'add_network'],
+                                             stderr=subprocess.PIPE)
+            subprocess.call(['wpa_cli', 'set_network', number, 'ssid', 
+                                     '\"{}\"'.format(mac_ssid_psk['ssid'])],
+                                    stderr=subprocess.PIPE)
+            subprocess.call(['wpa_cli', 'set_network', number, 'bssid', 
+                                     mac_ssid_psk['mac address']],
+                                    stderr=subprocess.PIPE)
+            subprocess.call(['wpa_cli', 'set_network', number, 'psk', 
+                                     '\"{}\"'.format(mac_ssid_psk['password'])],
+                                    stderr=subprocess.PIPE)
+            return True
+        except subprocess.CalledProcessError:
             return False
 
     # REMOVE NETWORK
@@ -384,8 +408,8 @@ class ReachWiFi(object):
                 except subprocess.CalledProcessError:
                     pass
             for network in list_of_networks:
-                result.append({"mac address": network.split("\t")[
-                              2], "ssid": network.split("\t")[1]})
+                result.append({"mac address": network.split("\t")[2],
+                               "ssid": network.split("\t")[1]})
         return result
 
     def network_parameter(self, parameter):
@@ -421,3 +445,4 @@ class ReachWiFi(object):
 
 if __name__ == '__main__':
     rwc = ReachWiFi()
+    print rwc.network_list
