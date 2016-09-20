@@ -121,7 +121,7 @@ class ReachWiFi(object):
         try:
             return self.launch(
                 "grep \'^ssid=\' {}".format(
-                    a.hostapd_path))[5:-1]
+                    self.hostapd_path))[5:-1]
         except subprocess.CalledProcessError:
             return None
 
@@ -138,7 +138,7 @@ class ReachWiFi(object):
         try:
             return self.launch(
                 "grep \'^p2p_ssid_postfix=\' {}".format(
-                    a.p2p_supplicant_path))[17:-1]
+                    self.p2p_supplicant_path))[17:-1]
         except subprocess.CalledProcessError:
             return None
 
@@ -289,6 +289,8 @@ class ReachWiFi(object):
                                     stderr=subprocess.PIPE)
             subprocess.check_output(['wpa_cli', 'set_network', number, 'psk', 
                                      '\"{}\"'.format(mac_ssid_psk['password'])],
+                                    stderr=subprocess.PIPE)
+            subprocess.check_output(['wpa_cli', 'save_config'],
                                     stderr=subprocess.PIPE)
             return True
         except subprocess.CalledProcessError:
