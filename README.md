@@ -30,7 +30,8 @@ This module works only in root mode
  - `set_hostap_name(newName)` - change name of your Access Point in AP mode
  - `get_hostap_name()` - return name of your Access Point in AP mode
  - `set_p2p_name(newName)` - change name of your devise for local access in Client mode
- - `get_p2p_name` - retirn name of your devise for local access in Client mode
+ - `get_p2p_name()` - return name of your devise for local access in Client mode
+ - `get_status()` -  return tuple(mode, network_info). Network info is a dict('IP address', 'ssid', 'mac address') 
 
  
  - `start_scanning()` - start scan available networks.
@@ -42,11 +43,12 @@ This module works only in root mode
  - `add_network(dict{'mac address':bssid, 'ssid':ssid, 'password':psk})` - add network to the network_list
  - `remove_network(dict{'mac address':bssid, 'ssid':ssid})` - remove network
  
- - `start_connecting(dict{'mac address':bssid, 'ssid':ssid}, callback = None, args = [], timeout = const)` - connect to network in network_list.  
-  Connetion to network continue for a several seconds into a background Thread.  
-  To notify user about connection ending uses callback functions.  
+ - `start_connecting(dict{'mac address':bssid, 'ssid':ssid}, callback = None, args = [], timeout = const)` - connect to network from network_list in thread.  
+  Connecting to network continue for a several seconds into a background Thread.  
+  To notify user about ending of connection use callback functions.  
   Prototype of callback function is `foo(result, args)`.  
-  There are some reasones for ending connection:
+  If program can't connect to your network and you don't set any callback then you will be returned to previous state.  
+  There are some reasons for ending of connection:
     * Successful connection
 	* Timeout error
 	* Retry of connection
