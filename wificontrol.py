@@ -476,10 +476,11 @@ class ReachWiFi(object):
             return -1
 
     def find_network_id_from_ssid(self, ssid):
-        if self.network_list is not None:
-            for network in self.network_list:
-                if network["ssid"] == ssid:
-                    return self.network_list.index(network)
+        network_list = self.launch(
+            "wpa_cli list_network").split('\n')[2:-1]
+        for network in network_list:
+            if network.find(ssid) != -1:
+                return int(network[0])
         return -1
 
 if __name__ == '__main__':
