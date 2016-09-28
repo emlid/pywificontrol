@@ -182,7 +182,7 @@ class ReachWiFi(object):
     def get_unknown_networks(self):
         result = list()
         current_scan_results = self.get_scan_results()
-        for network in a.network_list:
+        for network in self.network_list:
             result = [scan_network for scan_network in current_scan_results \
             if network["ssid"] != scan_network["ssid"]]
         return result
