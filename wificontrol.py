@@ -180,12 +180,13 @@ class ReachWiFi(object):
         return self.network_list
 
     def get_unknown_networks(self):
-        result = list()
         current_scan_results = self.get_scan_results()
-        for network in self.get_added_networks():
-            result = [scan_network for scan_network in current_scan_results \
-            if network["ssid"] != scan_network["ssid"]]
-        return result
+        added_networks = self.get_added_networks()
+        delete_list = self.create_delete_list(added_networks, current_scan_results)
+        for network in delete_list:
+            current_scan_results.remove(network)
+
+        return current_scan_results
 
     def add_network(self, mac_ssid_psk):
         if (self.network_not_added(mac_ssid_psk) and
@@ -328,6 +329,15 @@ class ReachWiFi(object):
             return True
         except subprocess.CalledProcessError:
             return False
+
+    # UNKNOWN NETWORKS
+    def create_delete_list(self, added_networks, scan_networks):
+        delete_list = list()
+        for scan_network in scan_networks:
+            for added_network in added_networks:
+                if added_network["ssid"] == scan_network["ssid"]:
+                    delete_list.append(scan_network)
+        return delete_list
 
     # START CONNECTING
     def break_connecting(self):
@@ -474,5 +484,6 @@ class ReachWiFi(object):
 
 if __name__ == '__main__':
     rwc = ReachWiFi()
-    print rwc.network_list
-    print rwc.get_status()
+    print rwc.get_scan_results()
+    print rwc.get_added_networks()
+    print rwc.get_unknown_networks()
