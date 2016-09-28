@@ -480,7 +480,7 @@ class ReachWiFi(object):
             "wpa_cli list_network").split('\n')[2:-1]
         for network in network_list:
             if network.decode('string_escape').find(ssid) != -1:
-                return int(network[0])
+                return int(network.split('\t')[0])
         return -1
 
 if __name__ == '__main__':
