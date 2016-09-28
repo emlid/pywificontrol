@@ -192,15 +192,14 @@ class ReachWiFi(object):
             self.add_network_to_wpa_supplicant_file(mac_ssid_psk) and
                 self.reconfigure()):
             self.network_list.append(
-                {"mac address": mac_ssid_psk["mac address"],
-                 "ssid": mac_ssid_psk["ssid"]})
+                {"mac address": mac_ssid_psk["mac address"].encode('utf-8'),
+                 "ssid": mac_ssid_psk["ssid"].encode('utf-8')})
             return True
         return False
 
     def remove_network(self, mac_ssid):
         if not self.network_not_added(mac_ssid):
-            remove_network_id = self.find_network_id_from_ssid(mac_ssid[
-                                                               "ssid"])
+            remove_network_id = self.find_network_id_from_ssid(mac_ssid["ssid"].encode('utf-8'))
             if (self.remove_network_from_wpa_supplicant_file(
                     remove_network_id) and self.reconfigure()):
                 self.network_list = self.parse_network_list()
@@ -270,8 +269,8 @@ class ReachWiFi(object):
     # ADD NETWORK
     def network_not_added(self, mac_ssid):
         for network in self.network_list:
-            if (mac_ssid["mac address"] == network["mac address"] and
-                mac_ssid["ssid"] == network["ssid"]):
+            if (mac_ssid["mac address"].encode('utf-8') == network["mac address"] and
+                mac_ssid["ssid"].encode('utf-8') == network["ssid"]):
                 return False
         return True
 
@@ -286,9 +285,9 @@ class ReachWiFi(object):
         try:
             wpa_supplicant_file = open(self.wpa_supplicant_path, 'a')
             wpa_supplicant_file.write(wpa_template.format(
-                mac_ssid_psk["mac address"],
-                mac_ssid_psk["ssid"],
-                mac_ssid_psk["password"]))
+                mac_ssid_psk["mac address"].encode('utf-8'),
+                mac_ssid_psk["ssid"].encode('utf-8'),
+                mac_ssid_psk["password"].encode('utf-8')))
             wpa_supplicant_file.close()
             return True
         except IOError as ValueError:
@@ -299,13 +298,13 @@ class ReachWiFi(object):
             number = subprocess.check_output(['wpa_cli', 'add_network'],
                     stderr=subprocess.PIPE).strip().split("\n")[-1]
             subprocess.check_output(['wpa_cli', 'set_network', number, 'ssid', 
-                                     '\"{}\"'.format(mac_ssid_psk['ssid'])],
+                                     '\"{}\"'.format(mac_ssid_psk['ssid'].encode('utf-8'))],
                                     stderr=subprocess.PIPE)
             subprocess.check_output(['wpa_cli', 'set_network', number, 'bssid', 
-                                     mac_ssid_psk['mac address']],
+                                     mac_ssid_psk['mac address'].encode('utf-8')],
                                     stderr=subprocess.PIPE)
             subprocess.check_output(['wpa_cli', 'set_network', number, 'psk', 
-                                     '\"{}\"'.format(mac_ssid_psk['password'])],
+                                     '\"{}\"'.format(mac_ssid_psk['password'].encode('utf-8'))],
                                     stderr=subprocess.PIPE)
             subprocess.check_output(['wpa_cli', 'save_config'],
                                     stderr=subprocess.PIPE)
@@ -357,7 +356,7 @@ class ReachWiFi(object):
     # CONNECT
     # ONLY FOR THREAD!!!
     def try_to_connect(self, mac_ssid):
-        index_network_for_connect = self.find_network_id_from_ssid(mac_ssid["ssid"])
+        index_network_for_connect = self.find_network_id_from_ssid(mac_ssid["ssid"].encode('utf-8'))
         if (self.reconnect() and
             self.enable_network(index_network_for_connect)):
             if self.wait_untill_connection_complete():
@@ -379,7 +378,7 @@ class ReachWiFi(object):
         return True
 
     def check_correct_connection(self, mac_ssid):
-        if ((self.get_network_parameter("ssid") != mac_ssid["ssid"])):
+        if ((self.get_network_parameter("ssid") != mac_ssid["ssid"].encode('utf-8'))):
             return False
         return True
 
