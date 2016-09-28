@@ -145,10 +145,11 @@ class ReachWiFi(object):
     def get_status(self):
         if self.wpa_supplicant_start:
             id_current_network = int(self.find_current_network_id())
-            if id_current_network != -1:
-                network_params = self.network_list[id_current_network]
-                network_IP = self.get_network_parameter('ip_address')
-                network_params['IP address'] =  network_IP
+            if id_current_network != -1: #TODO
+                network_params = []
+                network_params['mac address'] = self.get_network_parameter('bssid')
+                network_params['ssid'] = self.get_network_parameter('ssid')
+                network_params['IP address'] = self.get_network_parameter('ip_address')
                 network_state = ("wpa_supplicant", network_params)
             else:
                 network_state = ("wpa_supplicant", None)
@@ -355,8 +356,10 @@ class ReachWiFi(object):
         if self.wpa_supplicant_start:
             id_current_network = int(self.find_current_network_id())
             if id_current_network != -1:
-                network_state = ("wpa_supplicant", self.network_list[
-                                 id_current_network])
+                network_params = dict()
+                network_params['ssid'] = get_network_parameter('ssid')
+                network_params['mac address'] = get_network_parameter('bssid')
+                network_state = ("wpa_supplicant", network_params)
             else:
                 network_state = ("wpa_supplicant", None)
         else:
