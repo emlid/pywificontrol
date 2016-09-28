@@ -357,8 +357,8 @@ class ReachWiFi(object):
             id_current_network = int(self.find_current_network_id())
             if id_current_network != -1:
                 network_params = dict()
-                network_params['ssid'] = get_network_parameter('ssid')
-                network_params['mac address'] = get_network_parameter('bssid')
+                network_params['ssid'] = self.get_network_parameter('ssid').decode('string_escape')
+                network_params['mac address'] = self.get_network_parameter('bssid')
                 network_state = ("wpa_supplicant", network_params)
             else:
                 network_state = ("wpa_supplicant", None)
