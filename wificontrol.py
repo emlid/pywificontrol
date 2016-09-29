@@ -184,19 +184,23 @@ class ReachWiFi(object):
     def get_known_networks(self):
         current_scan_results = self.get_scan_results()
         added_networks = self.get_added_networks()  
-        known_networks = list()
-        for scan_network in current_scan_results:
-            for added_network in added_networks:
-                if added_network["ssid"].decode('string_escape') == scan_network["ssid"].decode('string_escape'):
-                    known_networks.append(scan_network)
-        return known_networks
+        if current_scan_results is not None:
+            known_networks = list()
+            for scan_network in current_scan_results:
+                for added_network in added_networks:
+                    if added_network["ssid"].decode('string_escape') == scan_network["ssid"].decode('string_escape'):
+                        known_networks.append(scan_network)
+            return known_networks
+        return None
 
     def get_unknown_networks(self):
         current_scan_results = self.get_scan_results()  
         delete_list = self.get_known_networks()
-        for network in delete_list:
-            current_scan_results.remove(network)
-        return current_scan_results
+        if delete_list is not None:
+            for network in delete_list:
+                current_scan_results.remove(network)
+            return current_scan_results
+        return None
 
     def add_network(self, mac_ssid_psk):
         if (self.network_not_added(mac_ssid_psk) and
