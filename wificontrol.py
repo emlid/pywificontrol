@@ -216,8 +216,7 @@ class ReachWiFi(object):
             return result
 
     def get_added_networks(self):
-        if self.wpa_supplicant_start:
-            self.network_list = self.parse_network_list()
+        self.network_list = self.parse_network_list()
         return self.network_list
 
     def get_known_networks(self):
@@ -375,8 +374,8 @@ class ReachWiFi(object):
             info = wpa_supplicant_file.read()
             ssid_symbol_num = info.find('{}'.format(mac_ssid['ssid'].encode('utf-8').decode('string_escape')))
             last = info.find('}', ssid_symbol_num) + 2
-            first = info.rfind('network', 0, ssid_symbol_num)
-            info = info.replace(info[first:last])
+            first = info.rfind('network', 0, ssid_symbol_num) - 1
+            info = info.replace(info[first:last], '')
             wpa_supplicant_file.close()
             
             wpa_supplicant_file = open(self.wpa_supplicant_path, 'w')
@@ -504,19 +503,53 @@ class ReachWiFi(object):
         return out_return
 
     def parse_network_list(self):
-        result = list()
         if self.wpa_supplicant_start:
-            while True:
-                try:
-                    list_of_networks = self.launch(
-                        "wpa_cli list_network").split("\n")[2:-1]
-                    break
-                except subprocess.CalledProcessError:
-                    pass
-            for network in list_of_networks:
-                result.append({"mac address": network.split("\t")[2],
-                               "ssid": network.split("\t")[1].decode('string_escape')})
+            result = self.parse_under_wpa_supplicant()
+        else:
+            result = self.parse_under_hostapd()
         return result
+
+    def parse_under_wpa_supplicant(self):
+        result = list()
+        while True:
+            try:
+                list_of_networks = self.launch(
+                    "wpa_cli list_network").split("\n")[2:-1]
+                break
+            except subprocess.CalledProcessError:
+                pass
+        for network in list_of_networks:
+            result.append({"mac address": network.split("\t")[2],
+                           "ssid": network.split("\t")[1].decode('string_escape')})
+        return result
+
+    def parse_under_hostapd(self):
+        result = list()
+        try:
+            wpa_supplicant_file = open(self.wpa_supplicant_path, 'r')
+            info = wpa_supplicant_file.read()
+        except (IOError, ValueError):
+            return []
+        else:
+            first = info.find('network')
+            info = info[first:].strip()
+            list_of_networks = info.split('}\n')
+            network_to_add = dict()
+            for network in list_of_networks:
+                ssid = network.find('ssid')
+                if ssid != -1:
+                    ssid_last = network.find('\n', ssid)
+                    network_to_add['ssid'] = network[ssid + 5:ssid_last]
+                else:
+                    network_to_add['ssid'] = 'Unknown'
+                bssid = network.find('bssid')
+                if bssid != -1:
+                    bssid_last = network.find('\n', bssid)
+                    network_to_add['mac address'] = network[bssid + 6:bssid_last]
+                else:
+                    network_to_add['mac address'] = 'any'
+                resuls.append(network_to_add)
+            return result
 
     def get_network_parameter(self, parameter):
         try:
