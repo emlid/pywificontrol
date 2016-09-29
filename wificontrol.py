@@ -69,6 +69,7 @@ class ReachWiFi(object):
         self.connection_timer = None
         self.break_event = Event()
         self.connection_event = Event()
+        self.network_list = None
         try:
             self.launch("wpa_cli status")
         except subprocess.CalledProcessError:
@@ -146,7 +147,7 @@ class ReachWiFi(object):
         if self.wpa_supplicant_start:
             id_current_network = int(self.find_current_network_id())
             if id_current_network != -1: #TODO
-                network_params = []
+                network_params = dict()
                 network_params['mac address'] = self.get_network_parameter('bssid')
                 network_params['ssid'] = self.get_network_parameter('ssid')
                 network_params['IP address'] = self.get_network_parameter('ip_address')
@@ -180,13 +181,21 @@ class ReachWiFi(object):
     def get_added_networks(self):
         return self.network_list
 
-    def get_unknown_networks(self):
+    def get_known_networks(self):
         current_scan_results = self.get_scan_results()
-        added_networks = self.get_added_networks()
-        delete_list = self.create_delete_list(added_networks, current_scan_results)
+        added_networks = self.get_added_networks()  
+        known_networks = list()
+        for scan_network in current_scan_results:
+            for added_network in added_networks:
+                if added_network["ssid"].decode('string_escape') == scan_network["ssid"].decode('string_escape'):
+                    known_networks.append(scan_network)
+        return known_networks
+
+    def get_unknown_networks(self):
+        current_scan_results = self.get_scan_results()  
+        delete_list = self.get_known_networks()
         for network in delete_list:
             current_scan_results.remove(network)
-
         return current_scan_results
 
     def add_network(self, mac_ssid_psk):
@@ -330,15 +339,6 @@ class ReachWiFi(object):
             return True
         except subprocess.CalledProcessError:
             return False
-
-    # UNKNOWN NETWORKS
-    def create_delete_list(self, added_networks, scan_networks):
-        delete_list = list()
-        for scan_network in scan_networks:
-            for added_network in added_networks:
-                if added_network["ssid"].decode('string_escape') == scan_network["ssid"].decode('string_escape'):
-                    delete_list.append(scan_network)
-        return delete_list
 
     # START CONNECTING
     def break_connecting(self):
