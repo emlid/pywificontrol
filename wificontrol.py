@@ -252,7 +252,7 @@ class ReachWiFi(object):
 
     def remove_network(self, mac_ssid):
         if not self.network_not_added(mac_ssid):
-            return self.remove_network_from_wpa_supplicant_file(mac_ssid)):
+            return self.remove_network_from_wpa_supplicant_file(mac_ssid)
         return False
 
     def start_connecting(self, mac_ssid, callback=None,
