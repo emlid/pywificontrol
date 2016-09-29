@@ -110,6 +110,19 @@ class ReachWiFi(object):
             self.network_list = self.parse_network_list()
             return True
 
+    def turn_off_wifi(self):
+        try:
+            if self.wpa_supplicant_start:
+                self.launch(self.launch_stop_wpa_service)
+            elif self.hostapd_start:
+                self.launch(self.launch_stop_hostapd_service)
+        except subprocess.CalledProcessError:
+            return False
+        else:
+            self.wpa_supplicant_start = False
+            self.hostapd_start = False
+            return True
+
     def set_hostap_name(self, name='reach'):
         try:
             self.launch(
