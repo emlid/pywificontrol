@@ -216,7 +216,8 @@ class ReachWiFi(object):
             return result
 
     def get_added_networks(self):
-        self.network_list = self.parse_network_list()
+        if self.wpa_supplicant_start:
+            self.network_list = self.parse_network_list()
         return self.network_list
 
     def get_known_networks(self):
@@ -251,8 +252,7 @@ class ReachWiFi(object):
 
     def remove_network(self, mac_ssid):
         if not self.network_not_added(mac_ssid):
-            if (self.remove_network_from_wpa_supplicant_file(mac_ssid)):
-                return True
+            return self.remove_network_from_wpa_supplicant_file(mac_ssid)):
         return False
 
     def start_connecting(self, mac_ssid, callback=None,
@@ -365,18 +365,23 @@ class ReachWiFi(object):
     # REMOVE NETWORK
     def remove_network_from_wpa_supplicant_file(self, mac_ssid):
         if self.hostapd_start:
-            self.remove_under_hostapd_mode(mac_ssid)
+            return self.remove_under_hostapd_mode(mac_ssid)
         else:
             return self.remove_under_wpa_supplicant_mode(mac_ssid)
 
     def remove_under_hostapd_mode(self, mac_ssid):
         try:
-            wpa_supplicant_file = open(self.wpa_supplicant_path, 'r+')
+            wpa_supplicant_file = open(self.wpa_supplicant_path, 'r')
             info = wpa_supplicant_file.read()
             ssid_symbol_num = info.find('{}'.format(mac_ssid['ssid'].encode('utf-8').decode('string_escape')))
-            last = info.find('}', start=ssid_symbol_num)
-            first = info.rfind('network', end=ssid_symbol_num)
-            print (first, last)
+            last = info.find('}', ssid_symbol_num) + 2
+            first = info.rfind('network', 0, ssid_symbol_num)
+            info = info.replace(info[first:last])
+            wpa_supplicant_file.close()
+            
+            wpa_supplicant_file = open(self.wpa_supplicant_path, 'w')
+            wpa_supplicant_file.write(info)
+            wpa_supplicant_file.close()
             return True
         except (IOError, ValueError):
             return False
