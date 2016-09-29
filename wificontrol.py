@@ -242,8 +242,7 @@ class ReachWiFi(object):
 
     def add_network(self, mac_ssid_psk):
         if (self.network_not_added(mac_ssid_psk) and
-            self.add_network_to_wpa_supplicant_file(mac_ssid_psk) and
-                self.reconfigure()):
+            self.add_network_to_wpa_supplicant_file(mac_ssid_psk)):
             self.network_list.append(
                 {"mac address": mac_ssid_psk["mac address"].encode('utf-8'),
                  "ssid": mac_ssid_psk["ssid"].encode('utf-8').decode('string_escape')})
@@ -254,7 +253,7 @@ class ReachWiFi(object):
         if not self.network_not_added(mac_ssid):
             remove_network_id = self.find_network_id_from_ssid(mac_ssid["ssid"].encode('utf-8').decode('string_escape'))
             if (self.remove_network_from_wpa_supplicant_file(
-                    remove_network_id) and self.reconfigure()):
+                    remove_network_id)):
                 self.network_list = self.parse_network_list()
                 return True
         return False
@@ -361,6 +360,7 @@ class ReachWiFi(object):
                                     stderr=subprocess.PIPE)
             subprocess.check_output(['wpa_cli', 'save_config'],
                                     stderr=subprocess.PIPE)
+            self.launch("wpa_cli save_config")
             return True
         except subprocess.CalledProcessError:
             return False
