@@ -70,6 +70,7 @@ class ReachWiFi(object):
         self.break_event = Event()
         self.connection_event = Event()
         self.network_list = None
+        self.wifi_on = True
         try:
             self.launch("wpa_cli status")
         except subprocess.CalledProcessError:
@@ -110,7 +111,22 @@ class ReachWiFi(object):
             self.network_list = self.parse_network_list()
             return True
 
+    def turn_on_wifi(self):
+        if self.wifi_on:
+            return True
+        try:
+                self.launch(self.launch_start_wpa_service)
+        except subprocess.CalledProcessError:
+            return False
+        else:
+            self.wpa_supplicant_start = True
+            self.hostapd_start = False
+            self.wifi_on = True
+            return True
+
     def turn_off_wifi(self):
+        if not self.wifi_on:
+            return True
         try:
             if self.wpa_supplicant_start:
                 self.launch(self.launch_stop_wpa_service)
@@ -121,7 +137,11 @@ class ReachWiFi(object):
         else:
             self.wpa_supplicant_start = False
             self.hostapd_start = False
+            self.wifi_on = False
             return True
+
+    def get_wifi_turned_on(self):
+        return self.wifi_on
 
     def set_hostap_name(self, name='reach'):
         try:
@@ -157,18 +177,21 @@ class ReachWiFi(object):
             return None
 
     def get_status(self):
-        if self.wpa_supplicant_start:
-            id_current_network = int(self.find_current_network_id())
-            if id_current_network != -1: #TODO
-                network_params = dict()
-                network_params['mac address'] = self.get_network_parameter('bssid')
-                network_params['ssid'] = self.get_network_parameter('ssid')
-                network_params['IP address'] = self.get_network_parameter('ip_address')
-                network_state = ("wpa_supplicant", network_params)
+        if self.wifi_on:
+            if self.wpa_supplicant_start:
+                id_current_network = int(self.find_current_network_id())
+                if id_current_network != -1: #TODO
+                    network_params = dict()
+                    network_params['mac address'] = self.get_network_parameter('bssid')
+                    network_params['ssid'] = self.get_network_parameter('ssid')
+                    network_params['IP address'] = self.get_network_parameter('ip_address')
+                    network_state = ("wpa_supplicant", network_params)
+                else:
+                    network_state = ("wpa_supplicant", None)
             else:
-                network_state = ("wpa_supplicant", None)
+                network_state = ("hostapd", None)
         else:
-            network_state = ("hostapd", None)
+            network_state = ("wifi off", None)
         return network_state
 
     # Client mode part
