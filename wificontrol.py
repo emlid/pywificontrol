@@ -534,21 +534,22 @@ class ReachWiFi(object):
             first = info.find('network')
             info = info[first:].strip()
             list_of_networks = info.split('}\n')
-            network_to_add = dict()
             for network in list_of_networks:
+                network_to_add = dict()
                 ssid = network.find('ssid')
                 if ssid != -1:
                     ssid_last = network.find('\n', ssid)
-                    network_to_add['ssid'] = network[ssid + 5:ssid_last]
+                    network_to_add['ssid'] = network[ssid + 5:ssid_last].strip('\"')
                 else:
                     network_to_add['ssid'] = 'Unknown'
+
                 bssid = network.find('bssid')
                 if bssid != -1:
                     bssid_last = network.find('\n', bssid)
                     network_to_add['mac address'] = network[bssid + 6:bssid_last]
                 else:
                     network_to_add['mac address'] = 'any'
-                resuls.append(network_to_add)
+                result.append(network_to_add)
             return result
 
     def get_network_parameter(self, parameter):
