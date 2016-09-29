@@ -167,6 +167,7 @@ class ReachWiFi(object):
             return False
 
     def get_scan_results(self):
+        self.network_list = self.parse_network_list()
         result = list()
         try:
             scan_result = self.launch("wpa_cli scan_result").split("\n")[2:-1]
@@ -179,6 +180,7 @@ class ReachWiFi(object):
             return result
 
     def get_added_networks(self):
+        self.network_list = self.parse_network_list()
         return self.network_list
 
     def get_known_networks(self):
