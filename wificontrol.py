@@ -251,10 +251,7 @@ class ReachWiFi(object):
 
     def remove_network(self, mac_ssid):
         if not self.network_not_added(mac_ssid):
-            remove_network_id = self.find_network_id_from_ssid(mac_ssid["ssid"].encode('utf-8').decode('string_escape'))
-            if (self.remove_network_from_wpa_supplicant_file(
-                    remove_network_id)):
-                self.network_list = self.parse_network_list()
+            if (self.remove_network_from_wpa_supplicant_file(mac_ssid)):
                 return True
         return False
 
@@ -342,7 +339,7 @@ class ReachWiFi(object):
                 mac_ssid_psk["password"].encode('utf-8')))
             wpa_supplicant_file.close()
             return True
-        except IOError as ValueError:
+        except (IOError, ValueError):
             return False
 
     def use_wpa_cli_add_network(self, mac_ssid_psk):
@@ -366,13 +363,33 @@ class ReachWiFi(object):
             return False
 
     # REMOVE NETWORK
-    def remove_network_from_wpa_supplicant_file(self, network_id):
+    def remove_network_from_wpa_supplicant_file(self, mac_ssid):
+        if self.hostapd_start:
+            self.remove_under_hostapd_mode(mac_ssid)
+        else:
+            return self.remove_under_wpa_supplicant_mode(mac_ssid)
+
+    def remove_under_hostapd_mode(self, mac_ssid):
         try:
-            self.launch("wpa_cli remove_network {}".format(network_id))
+            wpa_supplicant_file = open(self.wpa_supplicant_path, 'r+')
+            info = wpa_supplicant_file.read()
+            ssid_symbol_num = info.find('{}'.format(mac_ssid['ssid'].encode('utf-8').decode('string_escape')))
+            last = info.find('}', start=ssid_symbol_num)
+            first = info.rfind('network', end=ssid_symbol_num)
+            print (first, last)
+            return True
+        except (IOError, ValueError):
+            return False
+
+    def remove_under_wpa_supplicant_mode(self, mac_ssid):
+        try:
+            remove_network_id = self.find_network_id_from_ssid(mac_ssid["ssid"].encode('utf-8').decode('string_escape'))
+            self.launch("wpa_cli remove_network {}".format(remove_network_id))
             self.launch("wpa_cli save_config")
             return True
         except subprocess.CalledProcessError:
             return False
+
 
     def reconfigure(self):
         try:
