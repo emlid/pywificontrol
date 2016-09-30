@@ -254,6 +254,13 @@ class ReachWiFi(object):
             return self.remove_network_from_wpa_supplicant_file(mac_ssid)
         return False
 
+    def change_priority(self, mac_ssid_list):
+        info = self.read_wpa_supplicant_file()
+        print info
+        new_file = self.create_new_networks_priority_file(info, mac_ssid_list)
+        print new_file
+        self.write_new_wpa_supplicant_file(new_file)
+
     def start_connecting(self, mac_ssid, callback=None,
                          args=tuple(), timeout=30):
         self.break_connecting()
@@ -402,6 +409,67 @@ class ReachWiFi(object):
             return True
         except subprocess.CalledProcessError:
             return False
+
+
+    #CHANGE PRIORITY
+    def create_new_networks_priority_file(self, old_file, mac_ssid_list):
+        file_header = self.create_wpa_supplicant_header(old_file)
+        file_new_networks = self.create_new_file_part_with_network_list(old_file, mac_ssid_list)
+        new_file = file_header + file_new_networks
+        return new_file
+
+    def create_wpa_supplicant_header(self, wpa_file):
+        try:
+            head_last = wpa_file.index('\nnetwork={')
+        except ValueError:
+            return None
+        else:
+            return wpa_file[0:head_last]
+
+    def create_wpa_supplicant_network_list(self, wpa_file):
+        try:
+            first = wpa_file.index('\nnetwork={')
+        except ValueError:
+            return None
+        else:
+            file_networks = list()
+            for network in wpa_file[first:].strip().split('\n\n'):
+                file_networks.append('\n' + network + '\n')
+            return file_networks
+
+    def create_new_file_part_with_network_list(self, old_file, mac_ssid_list):
+        file_network_list_part = ''
+        list_network = self.create_wpa_supplicant_network_list(old_file)
+        if (list_network is None or
+            mac_ssid_list is None):
+            return None
+        for new_network in mac_ssid_list:
+            for old_network in list_network:
+                if old_network.find(new_network['ssid'].encode('utf-8').decode('string_escape')) != -1:
+                    file_network_list_part += old_network
+                    break
+        return file_network_list_part
+
+
+    def read_wpa_supplicant_file(self):
+        try:
+            wpa_supplicant_file = open(self.wpa_supplicant_path, 'r')
+            info = wpa_supplicant_file.read()
+            wpa_supplicant_file.close()
+        except (IOError, ValueError):
+            return None
+        else:
+            return info
+
+    def write_new_wpa_supplicant_file(self, new_file):
+        try:
+            wpa_supplicant_file = open(self.wpa_supplicant_path, 'w')
+            wpa_supplicant_file.write(new_file)
+            wpa_supplicant_file.close()
+        except (IOError, ValueError):
+            return False
+        else:
+            return True
 
     # START CONNECTING
     def break_connecting(self):
