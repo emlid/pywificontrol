@@ -1,4 +1,4 @@
-# wificontrol code is placed under the GPL license.
+2# wificontrol code is placed under the GPL license.
 # Written by Ivan Sapozhkov (ivan.sapozhkov@emlid.com)
 # Copyright (c) 2016, Emlid Limited
 # All rights reserved.
@@ -25,42 +25,51 @@ import subprocess
 from threading import Thread, Event, Timer
 
 class wpa_templates(object):
+    BASE = '''
+network={{
+\tssid=\"{}\"
+\tkey=\"{}\"
+}}
+'''
+
     OPEN = '''
-        network={{
-        \tssid=\"{}\"
-        \tkey_mgmt=NONE
-        }}
-    '''
+network={{
+\tssid=\"{}\"
+\tkey_mgmt=NONE
+}}
+'''
 
     WEP = '''
-        network={{
-        \tssid=\"{}\"
-        \tkey_mgmt=NONE
-        \tgroup=WEP104 WEP40
-        \twep_key0=\"{}\"
-        }}
-    '''
+network={{
+\tssid=\"{}\"
+\tkey_mgmt=NONE
+\tgroup=WEP104 WEP40
+\twep_key0=\"{}\"
+}}
+'''
     WPAPSK = '''
-        network={{
-        \tssid=\"{}\"
-        \tkey_mgmt=WPA-PSK
-        \tpairwise=CCMP TKIP
-        \tgroup=CCMP TKIP WEP104 WP40
-        \teap=TTLS PEAP TLS
-        \tpsk=\"{}\"
-        }}
-    '''
+network={{
+\tssid=\"{}\"
+\tkey_mgmt=WPA-PSK
+\tpairwise=CCMP TKIP
+\tgroup=CCMP TKIP WEP104 WP40
+\teap=TTLS PEAP TLS
+\tpsk=\"{}\"
+}}
+'''
 
-    WPAENT = '''
-        network={{
-        \tssid=\"{}\"
-        \tkey_mgmt=WPA-PSK
-        \tpairwise=CCMP TKIP
-        \tgroup=CCMP TKIP WEP104 WP40
-        \teap=TTLS PEAP TLS
-        \tpsk=\"{}\"
-        }}
-    '''
+    WPAEAP = '''
+network={{
+\tssid=\"{}\"
+\tkey_mgmt=WPA-EAP
+\tpairwise=CCMP TKIP
+\tgroup=CCMP TKIP WEP104 WP40
+\teap=TTLS PEAP TLS
+\tidentity=\"{}\"
+\tpassword=\"{}\"
+\tphase1=\"peaplable=0\"
+}}
+'''
 
 
 class ModeChangeException(Exception):
@@ -229,9 +238,9 @@ class ReachWiFi(object):
         self.network_list = self.parse_network_list()
         return self.network_list
 
-    def add_network(self, ssid_psk):
-        if (self.network_not_added(ssid_psk) and
-            self.add_network_to_wpa_supplicant_file(ssid_psk)):
+    def add_network(self, ssid_psk_security):
+        if (self.network_not_added(ssid_psk_security) and
+            self.add_network_to_wpa_supplicant_file(ssid_psk_security)):
             self.get_added_networks()
             return True
         return False
@@ -321,19 +330,50 @@ class ReachWiFi(object):
                 return False
         return True
 
-    def add_network_to_wpa_supplicant_file(self, ssid_psk):
-        return self.write_to_wpa_supplicant_file(ssid_psk)
+    def add_network_to_wpa_supplicant_file(self, ssid_psk_security):
+        return self.write_to_wpa_supplicant_file(ssid_psk_security)
 
-    def write_to_wpa_supplicant_file(self, ssid_psk):
+    def write_to_wpa_supplicant_file(self, ssid_psk_security):
         try:
             wpa_supplicant_file = open(self.wpa_supplicant_path, 'a')
-            wpa_supplicant_file.write(wpa_template_base.format(
-                ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
-                ssid_psk["password"].encode('utf-8')))                
-            wpa_supplicant_file.close()
+            try:
+                security = ssid_psk_security['security'].encode('utf-8')
+            except KeyError:
+                return False
+            else:
+                network_to_add = self.create_wifi_network(security)
+                wpa_supplicant_file.write(network_to_add)
+                wpa_supplicant_file.close()
             return True
         except (IOError, ValueError):
             return False
+
+    def create_wifi_network(self, security):
+        network = ''
+        try:
+            if (ssid_psk_security['security'] == 'open'):
+                network = wpa_templates.OPEN.format(
+                    ssid_psk_security["ssid"].encode('utf-8').decode('string_escape'))
+            elif (ssid_psk_security['security'] == 'wep'):
+                network = wpa_templates.WEP.format(
+                    ssid_psk_security["ssid"].encode('utf-8').decode('string_escape'),
+                    ssid_psk_security["password"].encode('utf-8'))
+            elif (ssid_psk_security['security'] == 'wpapsk'):
+                network = wpa_templates.WPAPSK.format(
+                    ssid_psk_security["ssid"].encode('utf-8').decode('string_escape'),
+                    ssid_psk_security["password"].encode('utf-8'))
+            elif (ssid_psk_security['security'] == 'wpaeap'):
+                network = wpa_templates.WPAEAP.format(
+                    ssid_psk_security["ssid"].encode('utf-8').decode('string_escape'),
+                    ssid_psk_security["identity"].encode('utf-8').decode('string_escape'),
+                    ssid_psk_security["password"].encode('utf-8')) 
+            else:
+                network = wpa_templates.BASE.format(
+                    ssid_psk_security["ssid"].encode('utf-8').decode('string_escape'),
+                    ssid_psk_security["password"].encode('utf-8'))
+            except KeyError:
+                pass
+        return network
 
     # REMOVE NETWORK
     def remove_network_from_wpa_supplicant_file(self, ssid):
@@ -585,5 +625,4 @@ class ReachWiFi(object):
 
 if __name__ == '__main__':
     rwc = ReachWiFi()
-    # print rwc.get_added_networks()
-    # print rwc.remove_network({'ssid':'abc', 'password':'123'})
+    print rwc.get_added_networks()
