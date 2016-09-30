@@ -24,12 +24,44 @@
 import subprocess
 from threading import Thread, Event, Timer
 
-wpa_template_base = '''
-network={{
-\tssid=\"{}\"
-\tpsk=\"{}\"
-}}
-'''
+class wpa_templates(object):
+    OPEN = '''
+        network={{
+        \tssid=\"{}\"
+        \tkey_mgmt=NONE
+        }}
+    '''
+
+    WEP = '''
+        network={{
+        \tssid=\"{}\"
+        \tkey_mgmt=NONE
+        \tgroup=WEP104 WEP40
+        \twep_key0=\"{}\"
+        }}
+    '''
+    WPAPSK = '''
+        network={{
+        \tssid=\"{}\"
+        \tkey_mgmt=WPA-PSK
+        \tpairwise=CCMP TKIP
+        \tgroup=CCMP TKIP WEP104 WP40
+        \teap=TTLS PEAP TLS
+        \tpsk=\"{}\"
+        }}
+    '''
+
+    WPAENT = '''
+        network={{
+        \tssid=\"{}\"
+        \tkey_mgmt=WPA-PSK
+        \tpairwise=CCMP TKIP
+        \tgroup=CCMP TKIP WEP104 WP40
+        \teap=TTLS PEAP TLS
+        \tpsk=\"{}\"
+        }}
+    '''
+
 
 class ModeChangeException(Exception):
     pass
