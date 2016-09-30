@@ -26,7 +26,6 @@ from threading import Thread, Event, Timer
 
 wpa_template = '''
 network={{
-\tbssid={}
 \tssid=\"{}\"
 \tpsk=\"{}\"
 }}
@@ -244,8 +243,7 @@ class ReachWiFi(object):
         if (self.network_not_added(mac_ssid_psk) and
             self.add_network_to_wpa_supplicant_file(mac_ssid_psk)):
             self.network_list.append(
-                {"mac address": mac_ssid_psk["mac address"].encode('utf-8'),
-                 "ssid": mac_ssid_psk["ssid"].encode('utf-8').decode('string_escape')})
+                {"ssid": mac_ssid_psk["ssid"].encode('utf-8').decode('string_escape')})
             return True
         return False
 
@@ -253,13 +251,6 @@ class ReachWiFi(object):
         if not self.network_not_added(mac_ssid):
             return self.remove_network_from_wpa_supplicant_file(mac_ssid)
         return False
-
-    def change_priority(self, mac_ssid_list):
-        info = self.read_wpa_supplicant_file()
-        print info
-        new_file = self.create_new_networks_priority_file(info, mac_ssid_list)
-        print new_file
-        self.write_new_wpa_supplicant_file(new_file)
 
     def start_connecting(self, mac_ssid, callback=None,
                          args=tuple(), timeout=30):
@@ -324,8 +315,7 @@ class ReachWiFi(object):
     # ADD NETWORK
     def network_not_added(self, mac_ssid):
         for network in self.network_list:
-            if (mac_ssid["mac address"].encode('utf-8') == network["mac address"] and
-                mac_ssid["ssid"].encode('utf-8').decode('string_escape') == network["ssid"].decode('string_escape')):
+            if (mac_ssid["ssid"].encode('utf-8').decode('string_escape') == network["ssid"].decode('string_escape')):
                 return False
         return True
 
@@ -340,8 +330,7 @@ class ReachWiFi(object):
         try:
             wpa_supplicant_file = open(self.wpa_supplicant_path, 'a')
             wpa_supplicant_file.write(wpa_template.format(
-                mac_ssid_psk["mac address"].encode('utf-8'),
-                mac_ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
+               mac_ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
                 mac_ssid_psk["password"].encode('utf-8')))
             wpa_supplicant_file.close()
             return True
@@ -354,9 +343,6 @@ class ReachWiFi(object):
                     stderr=subprocess.PIPE).strip().split("\n")[-1]
             subprocess.check_output(['wpa_cli', 'set_network', number, 'ssid', 
                                      '\"{}\"'.format(mac_ssid_psk['ssid'].encode('utf-8'))],
-                                    stderr=subprocess.PIPE)
-            subprocess.check_output(['wpa_cli', 'set_network', number, 'bssid', 
-                                     mac_ssid_psk['mac address'].encode('utf-8')],
                                     stderr=subprocess.PIPE)
             subprocess.check_output(['wpa_cli', 'set_network', number, 'psk', 
                                      '\"{}\"'.format(mac_ssid_psk['password'].encode('utf-8'))],
@@ -410,67 +396,6 @@ class ReachWiFi(object):
         except subprocess.CalledProcessError:
             return False
 
-
-    #CHANGE PRIORITY
-    def create_new_networks_priority_file(self, old_file, mac_ssid_list):
-        file_header = self.create_wpa_supplicant_header(old_file)
-        file_new_networks = self.create_new_file_part_with_network_list(old_file, mac_ssid_list)
-        new_file = file_header + file_new_networks
-        return new_file
-
-    def create_wpa_supplicant_header(self, wpa_file):
-        try:
-            head_last = wpa_file.index('\nnetwork={')
-        except ValueError:
-            return None
-        else:
-            return wpa_file[0:head_last]
-
-    def create_wpa_supplicant_network_list(self, wpa_file):
-        try:
-            first = wpa_file.index('\nnetwork={')
-        except ValueError:
-            return None
-        else:
-            file_networks = list()
-            for network in wpa_file[first:].strip().split('\n\n'):
-                file_networks.append('\n' + network + '\n')
-            return file_networks
-
-    def create_new_file_part_with_network_list(self, old_file, mac_ssid_list):
-        file_network_list_part = ''
-        list_network = self.create_wpa_supplicant_network_list(old_file)
-        if (list_network is None or
-            mac_ssid_list is None):
-            return None
-        for new_network in mac_ssid_list:
-            for old_network in list_network:
-                if old_network.find(new_network['ssid'].encode('utf-8').decode('string_escape')) != -1:
-                    file_network_list_part += old_network
-                    break
-        return file_network_list_part
-
-
-    def read_wpa_supplicant_file(self):
-        try:
-            wpa_supplicant_file = open(self.wpa_supplicant_path, 'r')
-            info = wpa_supplicant_file.read()
-            wpa_supplicant_file.close()
-        except (IOError, ValueError):
-            return None
-        else:
-            return info
-
-    def write_new_wpa_supplicant_file(self, new_file):
-        try:
-            wpa_supplicant_file = open(self.wpa_supplicant_path, 'w')
-            wpa_supplicant_file.write(new_file)
-            wpa_supplicant_file.close()
-        except (IOError, ValueError):
-            return False
-        else:
-            return True
-
     # START CONNECTING
     def break_connecting(self):
         if self.connection_thread is not None:
@@ -489,7 +414,6 @@ class ReachWiFi(object):
             if id_current_network != -1:
                 network_params = dict()
                 network_params['ssid'] = self.get_network_parameter('ssid').decode('string_escape')
-                network_params['mac address'] = self.get_network_parameter('bssid')
                 network_state = ("wpa_supplicant", network_params)
             else:
                 network_state = ("wpa_supplicant", None)
@@ -587,8 +511,7 @@ class ReachWiFi(object):
             except subprocess.CalledProcessError:
                 pass
         for network in list_of_networks:
-            result.append({"mac address": network.split("\t")[2],
-                           "ssid": network.split("\t")[1].decode('string_escape')})
+            result.append({"ssid": network.split("\t")[1].decode('string_escape')})
         return result
 
     def parse_under_hostapd(self):
@@ -611,12 +534,6 @@ class ReachWiFi(object):
                 else:
                     network_to_add['ssid'] = 'Unknown'
 
-                bssid = network.find('bssid')
-                if bssid != -1:
-                    bssid_last = network.find('\n', bssid)
-                    network_to_add['mac address'] = network[bssid + 6:bssid_last]
-                else:
-                    network_to_add['mac address'] = 'any'
                 result.append(network_to_add)
             return result
 
