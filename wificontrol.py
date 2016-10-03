@@ -580,6 +580,19 @@ class ReachWiFi(object):
                     network_to_add['ssid'] = network[ssid + 5:ssid_last].strip('\"')
                 else:
                     network_to_add['ssid'] = 'Unknown'
+                security = network.find('key_mgmt')
+                if security != -1:
+                    security_last = network.find('\n', security)
+                    if (network[security + 9:security_last].strip('\"') == 'NONE'):
+                        if (network.find('WEP') != -1):
+                            network_to_add['security'] = 'WEP'
+                        else:
+                            network_to_add['security'] = 'OPEN'
+                    else:
+                        network_to_add['security'] = network[security + 9:security_last].strip('\"')
+                else:
+                    network_to_add['security'] = 'BASE'
+
                 result.append(network_to_add)
             return result
 
