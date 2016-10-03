@@ -1,4 +1,4 @@
-2# wificontrol code is placed under the GPL license.
+# wificontrol code is placed under the GPL license.
 # Written by Ivan Sapozhkov (ivan.sapozhkov@emlid.com)
 # Copyright (c) 2016, Emlid Limited
 # All rights reserved.
@@ -71,14 +71,11 @@ network={{
 }}
 '''
 
-
 class ModeChangeException(Exception):
     pass
 
-
 class ExecutionError(Exception):
     pass
-
 
 class ReachWiFi(object):
     default_path = {
@@ -90,6 +87,8 @@ class ReachWiFi(object):
     launch_stop_wpa_service = "systemctl stop wpa_supplicant.service"
     launch_start_hostapd_service = "systemctl start hostapd.service"
     launch_stop_hostapd_service = "systemctl stop hostapd.service"
+    launch_rfkill_block_wifi = "rfkill block wifi"
+    launch_rfkill_unblock_wifi = "rfkill unblock wifi"
 
     def __init__(self):
         self.hostapd_path = self.default_path['hostapd_path']
@@ -124,7 +123,8 @@ class ReachWiFi(object):
     # Change mode part
     def start_host_mode(self):
         try:
-            if not self.wpa_supplicant_start:
+            if (self.hostapd_start and
+                not self.wpa_supplicant_start):
                 raise ModeChangeException("Already in host mode")
             self.disconnect()
             self.launch(self.launch_stop_wpa_service)
@@ -138,7 +138,8 @@ class ReachWiFi(object):
 
     def start_client_mode(self):
         try:
-            if not self.hostapd_start:
+            if (self.wpa_supplicant_start and
+                not self.hostapd_start):
                 raise ModeChangeException("Already in client mode")
             self.launch(self.launch_stop_hostapd_service)
             self.launch(self.launch_start_wpa_service)
@@ -147,6 +148,7 @@ class ReachWiFi(object):
         else:
             self.hostapd_start = False
             self.wpa_supplicant_start = True
+            self.reconnect()
             self.network_list = self.parse_network_list()
             return True
 
@@ -154,7 +156,8 @@ class ReachWiFi(object):
         if self.wifi_on:
             return True
         try:
-                self.launch(self.launch_start_wpa_service)
+            self.launch(self.launch_rfkill_unblock_wifi)
+            self.launch(self.launch_start_wpa_service)
         except subprocess.CalledProcessError:
             return False
         else:
@@ -163,7 +166,7 @@ class ReachWiFi(object):
             self.wifi_on = True
             return True
 
-    def turn_off_wifi(self):
+    def turn_off_wifi(self):  #TODO: rfkill
         if not self.wifi_on:
             return True
         try:
@@ -171,6 +174,7 @@ class ReachWiFi(object):
                 self.launch(self.launch_stop_wpa_service)
             elif self.hostapd_start:
                 self.launch(self.launch_stop_hostapd_service)
+            self.launch(self.launch_rfkill_block_wifi)
         except subprocess.CalledProcessError:
             return False
         else:
@@ -189,6 +193,8 @@ class ReachWiFi(object):
                                                        self.hostapd_path))
         except subprocess.CalledProcessError:
             return False
+        else:
+            return True
 
     def get_hostap_name(self):
         try:
@@ -203,9 +209,10 @@ class ReachWiFi(object):
             self.launch(
                 "sed -i s/^p2p_ssid_postfix=.*/p2p_ssid_postfix={}/ {}".format(
                     name, self.p2p_supplicant_path))
-            return True
         except subprocess.CalledProcessError:
             return False
+        else:
+            return True
 
     def get_p2p_name(self):
         try:
@@ -250,7 +257,7 @@ class ReachWiFi(object):
             result = self.remove_network_from_wpa_supplicant_file(ssid)
             if (result):
                 self.get_added_networks()
-                return result
+                return True
         return False
 
     def change_priority(self, ssid_list):
@@ -330,71 +337,63 @@ class ReachWiFi(object):
                 return False
         return True
 
-    def add_network_to_wpa_supplicant_file(self, ssid_psk_security):
-        return self.write_to_wpa_supplicant_file(ssid_psk_security)
-
-    def write_to_wpa_supplicant_file(self, ssid_psk_security):
+    def add_network_to_wpa_supplicant_file(self, ssid_psk_security):      
         try:
-            wpa_supplicant_file = open(self.wpa_supplicant_path, 'a')
-            try:
-                security = ssid_psk_security['security'].encode('utf-8')
-            except KeyError:
+            security = ssid_psk_security['security'].encode('utf-8')
+        except KeyError:
+            return False
+        else:
+            network_to_add = self.create_wifi_network(ssid_psk_security, security)
+            if not network_to_add:
                 return False
-            else:
-                network_to_add = self.create_wifi_network(security)
+            try:
+                wpa_supplicant_file = open(self.wpa_supplicant_path, 'a')
                 wpa_supplicant_file.write(network_to_add)
                 wpa_supplicant_file.close()
-            return True
-        except (IOError, ValueError):
-            return False
+            except IOError:
+                return False
+            else: 
+                return True
 
-    def create_wifi_network(self, security):
+    def create_wifi_network(self, ssid_psk, security):
         network = ''
         try:
-            if (ssid_psk_security['security'] == 'open'):
+            if (security == 'open'):
                 network = wpa_templates.OPEN.format(
-                    ssid_psk_security["ssid"].encode('utf-8').decode('string_escape'))
-            elif (ssid_psk_security['security'] == 'wep'):
+                    ssid_psk["ssid"].encode('utf-8').decode('string_escape'))
+            elif (security == 'wep'):
                 network = wpa_templates.WEP.format(
-                    ssid_psk_security["ssid"].encode('utf-8').decode('string_escape'),
-                    ssid_psk_security["password"].encode('utf-8'))
-            elif (ssid_psk_security['security'] == 'wpapsk'):
+                    ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
+                    ssid_psk["password"].encode('utf-8'))
+            elif (security == 'wpapsk'):
                 network = wpa_templates.WPAPSK.format(
-                    ssid_psk_security["ssid"].encode('utf-8').decode('string_escape'),
-                    ssid_psk_security["password"].encode('utf-8'))
-            elif (ssid_psk_security['security'] == 'wpaeap'):
+                    ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
+                    ssid_psk["password"].encode('utf-8'))
+            elif (security == 'wpaeap'):
                 network = wpa_templates.WPAEAP.format(
-                    ssid_psk_security["ssid"].encode('utf-8').decode('string_escape'),
-                    ssid_psk_security["identity"].encode('utf-8').decode('string_escape'),
-                    ssid_psk_security["password"].encode('utf-8')) 
+                    ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
+                    ssid_psk["identity"].encode('utf-8').decode('string_escape'),
+                    ssid_psk["password"].encode('utf-8')) 
             else:
                 network = wpa_templates.BASE.format(
-                    ssid_psk_security["ssid"].encode('utf-8').decode('string_escape'),
-                    ssid_psk_security["password"].encode('utf-8'))
-            except KeyError:
-                pass
+                    ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
+                    ssid_psk["password"].encode('utf-8'))
+        except KeyError:
+            pass
         return network
 
     # REMOVE NETWORK
     def remove_network_from_wpa_supplicant_file(self, ssid):
-        return self.remove_under_hostapd_mode(ssid)
-
-    def remove_under_hostapd_mode(self, ssid):
-        try:
-            wpa_supplicant_file = open(self.wpa_supplicant_path, 'r')
-            info = wpa_supplicant_file.read()
-            ssid_symbol_num = info.find('{}'.format(ssid['ssid'].encode('utf-8').decode('string_escape')))
-            last = info.find('}', ssid_symbol_num) + 2
-            first = info.rfind('network', 0, ssid_symbol_num) - 1
-            info = info.replace(info[first:last], '')
-            wpa_supplicant_file.close()
-            
-            wpa_supplicant_file = open(self.wpa_supplicant_path, 'w')
-            wpa_supplicant_file.write(info)
-            wpa_supplicant_file.close()
-            return True
-        except (IOError, ValueError):
+        info = self.read_wpa_supplicant_file()
+        if not info:
             return False
+        ssid_symbol_num = info.find('{}'.format(ssid['ssid'].encode('utf-8').decode('string_escape')))
+        last = info.find('}', ssid_symbol_num) + 2
+        first = info.rfind('\nnetwork', 0, ssid_symbol_num)
+        info = info.replace(info[first:last], '')        
+        if not self.write_new_wpa_supplicant_file(info):
+            return False
+        return True
 
     def reconfigure(self):
         try:
@@ -403,7 +402,6 @@ class ReachWiFi(object):
             return True
         except subprocess.CalledProcessError:
             return False
-
 
     #CHANGE PRIORITY
     def create_new_networks_priority_file(self, old_file, ssid_list):
@@ -563,17 +561,15 @@ class ReachWiFi(object):
         return out_return
 
     def parse_network_list(self):
-        return self.parse_under_hostapd()
-
-    def parse_under_hostapd(self):
-        result = list()
+        info = self.read_wpa_supplicant_file()
+        if not info:
+            return []
         try:
-            wpa_supplicant_file = open(self.wpa_supplicant_path, 'r')
-            info = wpa_supplicant_file.read()
-        except (IOError, ValueError):
+            result = list()
+            first = info.index('network')
+        except ValueError:
             return []
         else:
-            first = info.find('network')
             info = info[first:].strip()
             list_of_networks = info.split('}\n')
             for network in list_of_networks:
