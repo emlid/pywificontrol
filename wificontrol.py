@@ -292,7 +292,7 @@ class ReachWiFi(object):
 
     def connect(self, ssid, callback=None, args=None):
         result = False
-        self.disconnect()
+        self.disable_all_networks()
         if (not self.network_not_added(ssid) and
             self.try_to_connect(ssid) and
             self.check_correct_connection(ssid)):
@@ -328,6 +328,14 @@ class ReachWiFi(object):
             else:
                 return True
         return False
+
+    def disable_all_networks(self):
+        try:
+            self.launch('wpa_cli disable_network all')
+        except subprocess.CalledProcessError:
+            return False
+        else:
+            return True
 
     # Additional functional
     # ADD NETWORK
