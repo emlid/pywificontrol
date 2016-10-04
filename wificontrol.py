@@ -268,13 +268,13 @@ class ReachWiFi(object):
                 return self.write_new_wpa_supplicant_file(new_file)
         return False
 
-    # TODO: reconfigure... and think about list
     def start_connecting(self, ssid, callback=None,
                          args=tuple(), timeout=30):
         self.break_connecting()
         network_state = self.get_network_state()
-        self.reconfigure()
         self.start_client_mode()
+        while (not self.reconfigure()):
+            pass
         if callback is not None:
             self.connection_thread = Thread(
                 target=self.connect,
