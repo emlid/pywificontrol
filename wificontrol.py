@@ -201,7 +201,7 @@ class ReachWiFi(object):
         try:
             config = self.launch("ifconfig {}".format(self.interface))
             first = config.find('HWaddr') + 18
-            last = first + 7
+            last = first + 6
             mac_addr = config[first:last]
             self.launch(
                 "sed -i s/^ssid=.*/ssid={}{}/ {}".format(name, mac_addr, 
