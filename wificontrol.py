@@ -219,6 +219,27 @@ class ReachWiFi(object):
         except subprocess.CalledProcessError:
             return None
 
+    def set_host_name(self, name='reach'):
+        try:
+            hostname_file = open(self.hostname_path,'w')
+        except IOError:
+            return False
+        else:
+            hostname_file.write(name + '\n')
+            hostname_file.close()
+            try:
+                self.launch('hostname -F {}'.format(self.hostname_path))
+            except subprocess.CalledProcessError:
+                return False
+            else:
+                return True
+
+    def get_host_name(self):
+        try:
+            return self.launch("cat {}".format(self.hostname_path)).strip()
+        except subprocess.CalledProcessError:
+            return None
+
     def set_p2p_name(self, name='reach'):
         try:
             self.launch(
