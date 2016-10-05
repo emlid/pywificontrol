@@ -272,7 +272,7 @@ class ReachWiFi(object):
             return True
 
     def get_device_name(self):
-        return get_host_name
+        return self.get_host_name()
 
     def set_device_names(self, name):
         self.set_hostap_name(name)
