@@ -99,6 +99,7 @@ class ReachWiFi(object):
     launch_stop_wpa_service = "systemctl stop wpa_supplicant.service"
     launch_start_hostapd_service = "systemctl start hostapd.service"
     launch_stop_hostapd_service = "systemctl stop hostapd.service"
+    launch_restart_mdns = "systemctl restart mdns && sleep 2"
     launch_rfkill_block_wifi = "rfkill block wifi"
     launch_rfkill_unblock_wifi = "rfkill unblock wifi"
 
@@ -259,6 +260,30 @@ class ReachWiFi(object):
                     self.p2p_supplicant_path))[17:-1]
         except subprocess.CalledProcessError:
             return None
+
+    def set_hostap_password(self, password):
+        try:
+            self.launch(
+                "sed -i s/^wpa_passphrase=.*/wpa_passphrase={}/ {}".format(password, 
+                                                       self.hostapd_path))        
+        except subprocess.CalledProcessError:
+            return False
+        else:
+            return True
+
+    def get_device_name(self):
+        return get_host_name
+
+    def set_device_names(self, name):
+        self.set_hostap_name(name)
+        self.set_p2p_name(name)
+        self.set_host_name(name)
+        try:
+            self.launch(self.launch_restart_mdns)
+        except subprocess.CalledProcessError:
+            return False
+        else:
+            return True
 
     def get_status(self):
         if self.wifi_on:
