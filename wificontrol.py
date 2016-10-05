@@ -92,7 +92,8 @@ class ReachWiFi(object):
     default_path = {
         'hostapd_path': "/etc/hostapd/hostapd.conf",
         'wpa_supplicant_path': "/etc/wpa_supplicant/wpa_supplicant.conf",
-        'p2p_supplicant_path': "/etc/wpa_supplicant/p2p_supplicant.conf"
+        'p2p_supplicant_path': "/etc/wpa_supplicant/p2p_supplicant.conf",
+        'hostname_path':'/etc/hostname'
     }
     launch_start_wpa_service = "systemctl start wpa_supplicant.service"
     launch_stop_wpa_service = "systemctl stop wpa_supplicant.service"
@@ -105,6 +106,7 @@ class ReachWiFi(object):
         self.hostapd_path = self.default_path['hostapd_path']
         self.wpa_supplicant_path = self.default_path['wpa_supplicant_path']
         self.p2p_supplicant_path = self.default_path['p2p_supplicant_path']
+        self.hostname_path = self.default_path['hostname_path']
         self.interface = interface
         try:
             self.launch("wpa_supplicant")
