@@ -52,7 +52,18 @@ network={{
 \tssid=\"{}\"
 \tkey_mgmt=WPA-PSK
 \tpairwise=CCMP TKIP
-\tgroup=CCMP TKIP WEP104 WP40
+\tgroup=CCMP TKIP
+\teap=TTLS PEAP TLS
+\tpsk=\"{}\"
+}}
+'''
+    WPA2PSK = '''
+network={{
+\tssid=\"{}\"
+\tproto=RSN
+\tkey_mgmt=WPA-PSK
+\tpairwise=CCMP TKIP
+\tgroup=CCMP TKIP
 \teap=TTLS PEAP TLS
 \tpsk=\"{}\"
 }}
@@ -63,7 +74,7 @@ network={{
 \tssid=\"{}\"
 \tkey_mgmt=WPA-EAP
 \tpairwise=CCMP TKIP
-\tgroup=CCMP TKIP WEP104 WP40
+\tgroup=CCMP TKIP
 \teap=TTLS PEAP TLS
 \tidentity=\"{}\"
 \tpassword=\"{}\"
@@ -540,16 +551,7 @@ class ReachWiFi(object):
     # CONNECT SAFETY CALLBACK
     def revert_on_connect_failure(self, result, network_state):
         if not result:
-            self.return_to_state(network_state)
-
-    def return_to_state(self, network_state):
-        if network_state[0] == "hostapd":
             self.start_host_mode()
-        elif network_state[0] == "wpa_supplicant":
-            if network_state[1] is not None:
-                self.start_connecting(network_state[1])
-            else:
-                self.start_host_mode()
 
     # DISCONNETCT
     def disable_current_network(self):
