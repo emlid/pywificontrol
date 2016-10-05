@@ -101,11 +101,11 @@ class ReachWiFi(object):
     launch_rfkill_block_wifi = "rfkill block wifi"
     launch_rfkill_unblock_wifi = "rfkill unblock wifi"
 
-    def __init__(self):
+    def __init__(self, interface = 'wlan0'):
         self.hostapd_path = self.default_path['hostapd_path']
         self.wpa_supplicant_path = self.default_path['wpa_supplicant_path']
         self.p2p_supplicant_path = self.default_path['p2p_supplicant_path']
-
+        self.interface = interface
         try:
             self.launch("wpa_supplicant")
             self.launch("hostapd")
@@ -199,8 +199,12 @@ class ReachWiFi(object):
 
     def set_hostap_name(self, name='reach'):
         try:
+            config = self.launch("ifconfig {}".format(self.interface))
+            first = config.find('HWaddr') + 18
+            last = first + 7
+            mac_addr = config[first:last]
             self.launch(
-                "sed -i s/^ssid=.*/ssid={}/ {}".format(name, 
+                "sed -i s/^ssid=.*/ssid={}{}/ {}".format(name, mac_addr, 
                                                        self.hostapd_path))
         except subprocess.CalledProcessError:
             return False
