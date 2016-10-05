@@ -388,6 +388,10 @@ class ReachWiFi(object):
                 network = wpa_templates.WPAPSK.format(
                     ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
                     ssid_psk["password"].encode('utf-8'))
+            elif (security == 'wpa2psk'):
+                network = wpa_templates.WPA2PSK.format(
+                    ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
+                    ssid_psk["password"].encode('utf-8'))
             elif (security == 'wpaeap'):
                 network = wpa_templates.WPAEAP.format(
                     ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
@@ -601,7 +605,7 @@ class ReachWiFi(object):
                     else:
                         network_to_add['security'] = network[security + 9:security_last].strip('\"')
                 else:
-                    network_to_add['security'] = 'BASE'
+                    network_to_add['security'] = 'NONE'
 
                 result.append(network_to_add)
             return result
