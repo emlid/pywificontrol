@@ -602,6 +602,8 @@ class ReachWiFi(object):
                             network_to_add['security'] = 'WEP'
                         else:
                             network_to_add['security'] = 'OPEN'
+                    elif (network.find('proto') != -1):
+                        network_to_add['security'] = 'WPA2-PSK'
                     else:
                         network_to_add['security'] = network[security + 9:security_last].strip('\"')
                 else:
