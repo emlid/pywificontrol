@@ -31,10 +31,14 @@ Wificontrol was tested on Intel Edison with Yocto image
  - `set_device_name(newName)` - change all names of your device
  - `get_device_name()` - return name of your device
  - `get_hostap_name()` - return name of your Access Point in AP mode
- - `get_status()` -  return tuple(mode, network_info). Network info is a dict('IP address', 'ssid', 'mac address') 
+ - `get_status()` -  return value: `tuple(mode, network_info)`. Network info is a `dict('IP address', 'ssid', 'mac address')`
+ - `turn_on_wifi()` - turned on wifi through `rfkill block` command. Return value: `bool`
+ - `turn_off_wifi()` - turned on wifi through `rfkill unblock` command. Return value: `bool`
+ - `get_wifi_turned_on()` - return value: `bool`
 
- 
+
  - `get_added_networks()` - return list of added networks. Return value: `list[{'security': security, 'ssid': ssid}]`
+
 
  - `add_network(dict{'security': security, 'ssid': ssid, 'password': psk, 'identity': identity})` - add network to wpa_supplicant.conf file. Return value: `bool`   
 **List of possible security protocols**:
@@ -47,7 +51,7 @@ For network with Open security protocol field 'password' has no effect.
 Network with WPA Enterprise security protocol has additional field 'identity'
 
  - `remove_network(dict{'ssid': ssid})` - remove network from wpa_supplicant.conf file. Return value: `bool`
- - `change_priority(list[dict{'ssid': ssid}) - change autoconnection priority of networks in wpa_supplicant.conf file
+ - `change_priority(list[dict{'ssid': ssid}) - change autoconnection priority of networks in wpa_supplicant.conf file. Return value: `bool`
  
  - `start_connecting(dict{'ssid': ssid}, callback=None, args=None, timeout=const, any_network=False)` - connect to network from network_list in thread.  
   Connecting to network continue for a several seconds into a background Thread.  
