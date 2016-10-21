@@ -115,11 +115,15 @@ class ReachWiFi(object):
         self.interface = interface
         try:
             self.launch("wpa_supplicant")
-            self.launch("hostapd")
         except OSError:
-            raise OSError
+            raise OSError('No WPA_SUPPLICANT servise')
         except subprocess.CalledProcessError:
-            pass
+            try:
+                self.launch("hostapd")
+            except OSError:
+                raise OSError('No HOSTAPD servise')
+            except subprocess.CalledProcessError:
+                pass
 
         self.connection_thread = None
         self.connection_timer = None
@@ -147,8 +151,14 @@ class ReachWiFi(object):
             self.disconnect()
             self.launch(self.launch_stop_wpa_service)
             self.launch(self.launch_start_hostapd_service)
-        except (subprocess.CalledProcessError, ModeChangeException):
+        
+        except subprocess.CalledProcessError:
             return False
+        
+        except ModeChangeException, error:
+            print error
+            return True
+        
         else:
             self.wpa_supplicant_start = False
             self.hostapd_start = True
@@ -161,8 +171,14 @@ class ReachWiFi(object):
                 raise ModeChangeException("Already in client mode")
             self.launch(self.launch_stop_hostapd_service)
             self.launch(self.launch_start_wpa_service)
-        except (subprocess.CalledProcessError, ModeChangeException):
+        
+        except subprocess.CalledProcessError:
             return False
+        
+        except ModeChangeException, error:
+            print error
+            return True
+        
         else:
             self.hostapd_start = False
             self.wpa_supplicant_start = True
