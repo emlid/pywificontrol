@@ -370,7 +370,8 @@ class ReachWiFi(object):
             else:
                 self.disconnect()
         else:
-            if wait_untill_connection_complete():
+            if (self.reconnect() and 
+                self.wait_untill_connection_complete()):
                 result = True
 
         self.connection_thread = None
