@@ -1,4 +1,4 @@
-from wificontrol import ReachWiFi
+from wificontrol import wificontrol
 import sys
 
 def ConnectionCallback(result, wific):
@@ -17,7 +17,7 @@ def ConnectionCallback(result, wific):
 
 if __name__ == "__main__":
     try:
-        rwc = ReachWiFi()
+        rwc = wificontrol()
     except OSError, error:
         print error
         sys.exit(2)

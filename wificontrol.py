@@ -24,7 +24,6 @@
 import subprocess
 from threading import Thread, Event, Timer
 
-
 class wpa_templates(object):
     BASE = '''
 network={{
@@ -90,136 +89,135 @@ class ModeChangeException(Exception):
 class ExecutionError(Exception):
     pass
 
-class ReachWiFi(object):
-    default_path = {
+class wificontrol(object):
+    _default_path = {
         'hostapd_path': "/etc/hostapd/hostapd.conf",
         'wpa_supplicant_path': "/etc/wpa_supplicant/wpa_supplicant.conf",
         'p2p_supplicant_path': "/etc/wpa_supplicant/p2p_supplicant.conf",
         'hostname_path': '/etc/hostname'
     }
-    launch_start_wpa_service = "systemctl start wpa_supplicant.service"
-    launch_stop_wpa_service = "systemctl stop wpa_supplicant.service"
-    launch_start_hostapd_service = "systemctl start hostapd.service"
-    launch_stop_hostapd_service = "systemctl stop hostapd.service"
-    launch_restart_mdns = "systemctl restart mdns && sleep 2"
-    launch_rfkill_block_wifi = "rfkill block wifi"
-    launch_rfkill_unblock_wifi = "rfkill unblock wifi"
+    _launch_start_wpa_service = "systemctl start wpa_supplicant.service"
+    _launch_stop_wpa_service = "systemctl stop wpa_supplicant.service"
+    _launch_start_hostapd_service = "systemctl start hostapd.service"
+    _launch_stop_hostapd_service = "systemctl stop hostapd.service"
+    _launch_restart_mdns = "systemctl restart mdns && sleep 2"
+    _launch_rfkill_block_wifi = "rfkill block wifi"
+    _launch_rfkill_unblock_wifi = "rfkill unblock wifi"
 
     def __init__(self, interface='wlan0'):
-        self.hostapd_path = self.default_path['hostapd_path']
-        self.wpa_supplicant_path = self.default_path['wpa_supplicant_path']
-        self.p2p_supplicant_path = self.default_path['p2p_supplicant_path']
-        self.hostname_path = self.default_path['hostname_path']
+        self.hostapd_path = self._default_path['hostapd_path']
+        self.wpa_supplicant_path = self._default_path['wpa_supplicant_path']
+        self.p2p_supplicant_path = self._default_path['p2p_supplicant_path']
+        self.hostname_path = self._default_path['hostname_path']
         self.interface = interface
         try:
-            self.launch("wpa_supplicant")
+            self._launch("wpa_supplicant")
         except OSError:
             raise OSError('No WPA_SUPPLICANT servise')
         except subprocess.CalledProcessError:
             try:
-                self.launch("hostapd")
+                self._launch("hostapd")
             except OSError:
                 raise OSError('No HOSTAPD servise')
             except subprocess.CalledProcessError:
                 pass
 
-        self.connection_thread = None
-        self.connection_timer = None
-        self.break_event = Event()
-        self.connection_event = Event()
-        self.network_list = None
-        self.wifi_on = True
+        self._connection_thread = None
+        self._connection_timer = None
+        self._break_event = Event()
+        self._connection_event = Event()
+        self._network_list = None
+        self._wifi_on = True
         try:
-            self.launch("wpa_cli status")
+            self._launch("wpa_cli status")
         except subprocess.CalledProcessError:
-            self.wpa_supplicant_start = False
-            self.hostapd_start = True
-            self.network_list = list()
+            self._wpa_supplicant_start = False
+            self._hostapd_start = True
+            self._network_list = list()
         else:
-            self.wpa_supplicant_start = True
-            self.hostapd_start = False
-            self.network_list = self.parse_network_list()
+            self._wpa_supplicant_start = True
+            self._hostapd_start = False
+            self._network_list = self._parse_network_list()
 
     # Change mode part
     def start_host_mode(self):
         try:
-            if (self.hostapd_start and
-                    not self.wpa_supplicant_start):
+            if (self._hostapd_start and
+                not self._wpa_supplicant_start):
                 raise ModeChangeException("Already in host mode")
             self.disconnect()
-            self.launch(self.launch_stop_wpa_service)
-            self.launch(self.launch_start_hostapd_service)
+            self._launch(self._launch_stop_wpa_service)
+            self._launch(self._launch_start_hostapd_service)
         except subprocess.CalledProcessError:
             return False
         except ModeChangeException, error:
             print error
             return True
         else:
-            self.wpa_supplicant_start = False
-            self.hostapd_start = True
+            self._wpa_supplicant_start = False
+            self._hostapd_start = True
             return True
 
     def start_client_mode(self):
         try:
-            if (self.wpa_supplicant_start and
-                    not self.hostapd_start):
+            if (self._wpa_supplicant_start and
+                not self._hostapd_start):
                 raise ModeChangeException("Already in client mode")
-            self.launch(self.launch_stop_hostapd_service)
-            self.launch(self.launch_start_wpa_service)
+            self._launch(self._launch_stop_hostapd_service)
+            self._launch(self._launch_start_wpa_service)
         except subprocess.CalledProcessError:
             return False
         except ModeChangeException, error:
             print error
             return True
-
         else:
-            self.hostapd_start = False
-            self.wpa_supplicant_start = True
-            self.reconnect()
-            self.network_list = self.parse_network_list()
+            self._hostapd_start = False
+            self._wpa_supplicant_start = True
+            self._reconnect()
+            self._network_list = self._parse_network_list()
             return True
 
     def turn_on_wifi(self):
-        if self.wifi_on:
+        if self._wifi_on:
             return True
         try:
-            self.launch(self.launch_rfkill_unblock_wifi)
-            self.launch(self.launch_start_wpa_service)
+            self._launch(self._launch_rfkill_unblock_wifi)
+            self._launch(self._launch_start_wpa_service)
         except subprocess.CalledProcessError:
             return False
         else:
-            self.wpa_supplicant_start = True
-            self.hostapd_start = False
-            self.wifi_on = True
+            self._wpa_supplicant_start = True
+            self._hostapd_start = False
+            self._wifi_on = True
             return True
 
     def turn_off_wifi(self):
-        if not self.wifi_on:
+        if not self._wifi_on:
             return True
         try:
-            if self.wpa_supplicant_start:
-                self.launch(self.launch_stop_wpa_service)
-            elif self.hostapd_start:
-                self.launch(self.launch_stop_hostapd_service)
-            self.launch(self.launch_rfkill_block_wifi)
+            if self._wpa_supplicant_start:
+                self._launch(self._launch_stop_wpa_service)
+            elif self._hostapd_start:
+                self._launch(self._launch_stop_hostapd_service)
+            self._launch(self._launch_rfkill_block_wifi)
         except subprocess.CalledProcessError:
             return False
         else:
-            self.wpa_supplicant_start = False
-            self.hostapd_start = False
-            self.wifi_on = False
+            self._wpa_supplicant_start = False
+            self._hostapd_start = False
+            self._wifi_on = False
             return True
 
     def get_wifi_turned_on(self):
-        return self.wifi_on
+        return self._wifi_on
 
-    def set_hostap_name(self, name='reach'):
+    def _set_hostap_name(self, name='reach'):
         try:
-            config = self.launch("ifconfig {}".format(self.interface))
+            config = self._launch("ifconfig {}".format(self.interface))
             first = config.find('HWaddr') + 18
             last = first + 6
             mac_addr = config[first:last]
-            self.launch(
+            self._launch(
                 "sed -i s/^ssid=.*/ssid={}{}/ {}".format(name, mac_addr,
                                                          self.hostapd_path))
         except subprocess.CalledProcessError:
@@ -229,13 +227,13 @@ class ReachWiFi(object):
 
     def get_hostap_name(self):
         try:
-            return self.launch(
+            return self._launch(
                 "grep \'^ssid=\' {}".format(
                     self.hostapd_path))[5:-1]
         except subprocess.CalledProcessError:
             return None
 
-    def set_host_name(self, name='reach'):
+    def _set_host_name(self, name='reach'):
         try:
             hostname_file = open(self.hostname_path, 'w')
         except IOError:
@@ -244,21 +242,21 @@ class ReachWiFi(object):
             hostname_file.write(name + '\n')
             hostname_file.close()
             try:
-                self.launch('hostname -F {}'.format(self.hostname_path))
+                self._launch('hostname -F {}'.format(self.hostname_path))
             except subprocess.CalledProcessError:
                 return False
             else:
                 return True
 
-    def get_host_name(self):
+    def _get_host_name(self):
         try:
-            return self.launch("cat {}".format(self.hostname_path)).strip()
+            return self._launch("cat {}".format(self.hostname_path)).strip()
         except subprocess.CalledProcessError:
             return None
 
     def set_p2p_name(self, name='reach'):
         try:
-            self.launch(
+            self._launch(
                 "sed -i s/^p2p_ssid_postfix=.*/p2p_ssid_postfix={}/ {}".format(
                     name, self.p2p_supplicant_path))
         except subprocess.CalledProcessError:
@@ -266,9 +264,9 @@ class ReachWiFi(object):
         else:
             return True
 
-    def get_p2p_name(self):
+    def _get_p2p_name(self):
         try:
-            return self.launch(
+            return self._launch(
                 "grep \'^p2p_ssid_postfix=\' {}".format(
                     self.p2p_supplicant_path))[17:-1]
         except subprocess.CalledProcessError:
@@ -276,7 +274,7 @@ class ReachWiFi(object):
 
     def set_hostap_password(self, password):
         try:
-            self.launch(
+            self._launch(
                 "sed -i s/^wpa_passphrase=.*/wpa_passphrase={}/ {}".format(
                     password, self.hostapd_path))
         except subprocess.CalledProcessError:
@@ -285,29 +283,29 @@ class ReachWiFi(object):
             return True
 
     def get_device_name(self):
-        return self.get_host_name()
+        return self._get_host_name()
 
     def set_device_names(self, name):
-        self.set_hostap_name(name)
+        self._set_hostap_name(name)
         self.set_p2p_name(name)
-        self.set_host_name(name)
+        self._set_host_name(name)
         try:
-            self.launch(self.launch_restart_mdns)
+            self._launch(self._launch_restart_mdns)
         except subprocess.CalledProcessError:
             return False
         else:
             return True
 
     def get_status(self):
-        if self.wifi_on:
-            if self.wpa_supplicant_start:
-                id_current_network = int(self.find_current_network_id())
+        if self._wifi_on:
+            if self._wpa_supplicant_start:
+                id_current_network = int(self._find_current_network_id())
                 if id_current_network != -1:
                     network_params = dict()
-                    network_params['mac address'] = self.get_network_parameter(
+                    network_params['mac address'] = self._get_network_parameter(
                         'bssid')
-                    network_params['ssid'] = self.get_network_parameter('ssid')
-                    network_params['IP address'] = self.get_network_parameter(
+                    network_params['ssid'] = self._get_network_parameter('ssid')
+                    network_params['IP address'] = self._get_network_parameter(
                         'ip_address')
                     network_state = ("wpa_supplicant", network_params)
                 else:
@@ -320,74 +318,74 @@ class ReachWiFi(object):
 
     # Client mode part
     def get_added_networks(self):
-        self.network_list = self.parse_network_list()
-        return self.network_list
+        self._network_list = self._parse_network_list()
+        return self._network_list
 
     def add_network(self, ssid_psk_security):
-        if (self.network_not_added(ssid_psk_security) and
-                self.add_network_to_wpa_supplicant_file(ssid_psk_security)):
+        if (self._network_not_added(ssid_psk_security) and
+                self._add_network_to_wpa_supplicant_file(ssid_psk_security)):
             self.get_added_networks()
             return True
         return False
 
     def remove_network(self, ssid):
-        if not self.network_not_added(ssid):
-            result = self.remove_network_from_wpa_supplicant_file(ssid)
+        if not self._network_not_added(ssid):
+            result = self._remove_network_from_wpa_supplicant_file(ssid)
             if (result):
                 self.get_added_networks()
                 return True
         return False
 
     def change_priority(self, ssid_list):
-        info = self.read_wpa_supplicant_file()
+        info = self._read_wpa_supplicant_file()
         if info is not None:
-            new_file = self.create_new_networks_priority_file(info, ssid_list)
+            new_file = self._create_new_networks_priority_file(info, ssid_list)
             if new_file is not None:
-                return self.write_new_wpa_supplicant_file(new_file)
+                return self._write_new_wpa_supplicant_file(new_file)
         return False
 
     def start_connecting(self, ssid, callback=None,
-                         args=tuple(), timeout=10, any_network=False):
-        self.break_connecting()
-        network_state = self.get_network_state()
+                         args=None, timeout=10, any_network=False):
+        self._break_connecting()
+        network_state = self._get_network_state()
         self.start_client_mode()
-        while (not self.reconfigure()):
+        while (not self._reconfigure()):
             pass
         if callback is not None:
-            self.connection_thread = Thread(
+            self._connection_thread = Thread(
                 target=self.connect,
                 args=(ssid, callback, any_network, args))
         else:
-            self.connection_thread = Thread(
+            self._connection_thread = Thread(
                 target=self.connect,
                 args=(ssid,
-                      self.revert_on_connect_failure,
+                      self._revert_on_connect_failure,
                       any_network, network_state))
-        self.connection_timer = Timer(timeout, self.stop_connecting)
-        self.connection_event.set()
-        self.connection_thread.start()
-        self.connection_timer.start()
+        self._connection_timer = Timer(timeout, self.stop_connecting)
+        self._connection_event.set()
+        self._connection_thread.start()
+        self._connection_timer.start()
 
     def connect(self, ssid, callback=None, any_network=False, args=None):
         result = False
         if not any_network:
-            self.disable_all_networks()
-            if (not self.network_not_added(ssid) and
-                self.try_to_connect(ssid) and
-                    self.check_correct_connection(ssid)):
+            self._disable_all_networks()
+            if (not self._network_not_added(ssid) and
+                self._try_to_connect(ssid) and
+                    self._check_correct_connection(ssid)):
                 result = True
             else:
                 self.disconnect()
         else:
-            if (self.reconnect() and
-                self.wait_untill_connection_complete()):
+            if (self._reconnect() and
+                self._wait_untill_connection_complete()):
                 result = True
 
-        self.connection_thread = None
-        self.stop_timer_thread()
-        if self.break_event.is_set():
+        self._connection_thread = None
+        self._stop_timer_thread()
+        if self._break_event.is_set():
             callback = None
-            self.break_event.clear()
+            self._break_event.clear()
 
         if callback is not None:
             if args is not None:
@@ -396,25 +394,25 @@ class ReachWiFi(object):
                 callback(result)
 
     def stop_connecting(self):
-        self.connection_event.clear()
-        self.connection_thread.join()
+        self._connection_event.clear()
+        self._connection_thread.join()
 
     def disconnect(self):
-        state = self.get_network_parameter("wpa_state")
+        state = self._get_network_parameter("wpa_state")
         if (state is not None and
             state != "DISCONNECTED" and
-                self.disable_current_network()):
+                self._disable_current_network()):
             try:
-                self.launch("wpa_cli disconnect")
+                self._launch("wpa_cli disconnect")
             except subprocess.CalledProcessError:
                 pass
             else:
                 return True
         return False
 
-    def disable_all_networks(self):
+    def _disable_all_networks(self):
         try:
-            self.launch('wpa_cli disable_network all')
+            self._launch('wpa_cli disable_network all')
         except subprocess.CalledProcessError:
             return False
         else:
@@ -422,20 +420,20 @@ class ReachWiFi(object):
 
     # Additional functional
     # ADD NETWORK
-    def network_not_added(self, ssid):
-        for network in self.network_list:
+    def _network_not_added(self, ssid):
+        for network in self._network_list:
             if (ssid["ssid"].encode('utf-8').decode('string_escape') ==
                     network["ssid"].decode('string_escape')):
                 return False
         return True
 
-    def add_network_to_wpa_supplicant_file(self, ssid_psk_security):
+    def _add_network_to_wpa_supplicant_file(self, ssid_psk_security):
         try:
             security = ssid_psk_security['security'].encode('utf-8')
         except KeyError:
             return False
         else:
-            network_to_add = self.create_wifi_network(ssid_psk_security,
+            network_to_add = self._create_wifi_network(ssid_psk_security,
                                                       security)
             if not network_to_add:
                 return False
@@ -448,7 +446,7 @@ class ReachWiFi(object):
             else:
                 return True
 
-    def create_wifi_network(self, ssid_psk, security):
+    def _create_wifi_network(self, ssid_psk, security):
         network = ''
         try:
             if (security == 'open'):
@@ -481,8 +479,8 @@ class ReachWiFi(object):
         return network
 
     # REMOVE NETWORK
-    def remove_network_from_wpa_supplicant_file(self, ssid):
-        info = self.read_wpa_supplicant_file()
+    def _remove_network_from_wpa_supplicant_file(self, ssid):
+        info = self._read_wpa_supplicant_file()
         if not info:
             return False
         ssid_symbol_num = info.find('{}'.format(
@@ -490,27 +488,27 @@ class ReachWiFi(object):
         last = info.find('}', ssid_symbol_num) + 2
         first = info.rfind('\nnetwork', 0, ssid_symbol_num)
         info = info.replace(info[first:last], '')
-        if not self.write_new_wpa_supplicant_file(info):
+        if not self._write_new_wpa_supplicant_file(info):
             return False
         return True
 
-    def reconfigure(self):
+    def _reconfigure(self):
         try:
-            if self.wpa_supplicant_start:
-                self.launch("wpa_cli reconfigure")
+            if self._wpa_supplicant_start:
+                self._launch("wpa_cli _reconfigure")
             return True
         except subprocess.CalledProcessError:
             return False
 
     # CHANGE PRIORITY
-    def create_new_networks_priority_file(self, old_file, ssid_list):
-        file_header = self.create_wpa_supplicant_header(old_file)
-        file_new_networks = self.create_new_file_part_with_network_list(
+    def _create_new_networks_priority_file(self, old_file, ssid_list):
+        file_header = self._create_wpa_supplicant_header(old_file)
+        file_new_networks = self._create_new_file_part_with_network_list(
             old_file, ssid_list)
         new_file = file_header + file_new_networks
         return new_file
 
-    def create_wpa_supplicant_header(self, wpa_file):
+    def _create_wpa_supplicant_header(self, wpa_file):
         try:
             head_last = wpa_file.index('\nnetwork={')
         except ValueError:
@@ -518,7 +516,7 @@ class ReachWiFi(object):
         else:
             return wpa_file[0:head_last]
 
-    def create_wpa_supplicant_network_list(self, wpa_file):
+    def _create_wpa_supplicant_network_list(self, wpa_file):
         try:
             first = wpa_file.index('\nnetwork={')
         except ValueError:
@@ -529,9 +527,9 @@ class ReachWiFi(object):
                 file_networks.append('\n' + network + '\n')
             return file_networks
 
-    def create_new_file_part_with_network_list(self, old_file, ssid_list):
+    def _create_new_file_part_with_network_list(self, old_file, ssid_list):
         file_network_list_part = ''
-        list_network = self.create_wpa_supplicant_network_list(old_file)
+        list_network = self._create_wpa_supplicant_network_list(old_file)
         if (list_network is None or
                 ssid_list is None):
             return None
@@ -543,7 +541,7 @@ class ReachWiFi(object):
                     break
         return file_network_list_part
 
-    def read_wpa_supplicant_file(self):
+    def _read_wpa_supplicant_file(self):
         try:
             wpa_supplicant_file = open(self.wpa_supplicant_path, 'r')
             info = wpa_supplicant_file.read()
@@ -553,7 +551,7 @@ class ReachWiFi(object):
         else:
             return info
 
-    def write_new_wpa_supplicant_file(self, new_file):
+    def _write_new_wpa_supplicant_file(self, new_file):
         try:
             wpa_supplicant_file = open(self.wpa_supplicant_path, 'w')
             wpa_supplicant_file.write(new_file)
@@ -564,23 +562,23 @@ class ReachWiFi(object):
             return True
 
     # START CONNECTING
-    def break_connecting(self):
-        if self.connection_thread is not None:
-            self.break_event.set()
+    def _break_connecting(self):
+        if self._connection_thread is not None:
+            self._break_event.set()
             try:
-                if self.connection_timer.isAlive():
-                    self.connection_timer.cancel()
-                self.connection_timer = None
+                if self._connection_timer.isAlive():
+                    self._connection_timer.cancel()
+                self._connection_timer = None
                 self.stop_connecting()
             except AttributeError:
                 pass
 
-    def get_network_state(self):
-        if self.wpa_supplicant_start:
-            id_current_network = int(self.find_current_network_id())
+    def _get_network_state(self):
+        if self._wpa_supplicant_start:
+            id_current_network = int(self._find_current_network_id())
             if id_current_network != -1:
                 network_params = dict()
-                network_params['ssid'] = self.get_network_parameter(
+                network_params['ssid'] = self._get_network_parameter(
                     'ssid').decode('string_escape')
                 network_state = ("wpa_supplicant", network_params)
             else:
@@ -591,72 +589,72 @@ class ReachWiFi(object):
 
     # CONNECT
     # ONLY FOR THREAD!!!
-    def try_to_connect(self, ssid):
-        index_network_for_connect = self.find_network_id_from_ssid(
+    def _try_to_connect(self, ssid):
+        index_network_for_connect = self._find_network_id_from_ssid(
             ssid["ssid"].encode('utf-8').decode('string_escape'))
-        if (self.reconnect() and
-                self.enable_network(index_network_for_connect)):
-            if self.wait_untill_connection_complete():
+        if (self._reconnect() and
+                self._enable_network(index_network_for_connect)):
+            if self._wait_untill_connection_complete():
                 return True
         return False
 
-    def enable_network(self, network_id):
+    def _enable_network(self, network_id):
         try:
-            self.launch("wpa_cli enable_network {}".format(
+            self._launch("wpa_cli _enable_network {}".format(
                 network_id))
             return True
         except subprocess.CalledProcessError:
             return False
 
-    def wait_untill_connection_complete(self):
-        while self.get_network_parameter("wpa_state") != "COMPLETED":
-            if not self.connection_event.is_set():
+    def _wait_untill_connection_complete(self):
+        while self._get_network_parameter("wpa_state") != "COMPLETED":
+            if not self._connection_event.is_set():
                 return False
         return True
 
-    def check_correct_connection(self, ssid):
-        if (self.get_network_parameter("ssid").decode('string_escape')
+    def _check_correct_connection(self, ssid):
+        if (self._get_network_parameter("ssid").decode('string_escape')
                 != ssid["ssid"].encode('utf-8').decode('string_escape')):
             return False
         return True
 
-    def reconnect(self):
+    def _reconnect(self):
         try:
-            self.launch("wpa_cli reconnect")
+            self._launch("wpa_cli _reconnect")
             return True
         except (subprocess.CalledProcessError):
             return False
 
-    def stop_timer_thread(self):
+    def _stop_timer_thread(self):
         try:
-            self.connection_timer.cancel()
+            self._connection_timer.cancel()
         except AttributeError:
             pass
 
     # CONNECT SAFETY CALLBACK
-    def revert_on_connect_failure(self, result, network_state):
+    def _revert_on_connect_failure(self, result, network_state):
         if not result:
             self.start_host_mode()
 
     # DISCONNETCT
-    def disable_current_network(self):
+    def _disable_current_network(self):
         try:
-            current_network_id = self.find_current_network_id()
+            current_network_id = self._find_current_network_id()
             if current_network_id != -1:
-                self.launch("wpa_cli disable_network {}".format(
+                self._launch("wpa_cli disable_network {}".format(
                     current_network_id))
             return True
         except subprocess.CalledProcessError:
             return False
 
     # COMMON
-    def launch(self, args):
+    def _launch(self, args):
         out_return = subprocess.check_output(
             args, stderr=subprocess.PIPE, shell=True)
         return out_return
 
-    def parse_network_list(self):
-        info = self.read_wpa_supplicant_file()
+    def _parse_network_list(self):
+        info = self._read_wpa_supplicant_file()
         if not info:
             return []
         try:
@@ -695,9 +693,9 @@ class ReachWiFi(object):
                 result.append(network_to_add)
             return result
 
-    def get_network_parameter(self, parameter):
+    def _get_network_parameter(self, parameter):
         try:
-            network_status = self.launch("wpa_cli status").split("\n")[1:-1]
+            network_status = self._launch("wpa_cli status").split("\n")[1:-1]
             for network_params in network_status:
                 try:
                     network_params.split('=').index(parameter)
@@ -708,29 +706,29 @@ class ReachWiFi(object):
         except subprocess.CalledProcessError:
             return None
 
-    def find_current_network_id(self):
+    def _find_current_network_id(self):
         try:
-            network_list = self.launch(
+            _network_list = self._launch(
                 "wpa_cli list_network").split("\n")[2:-1]
-            for network in network_list:
+            for network in _network_list:
                 if network.split('\t')[-1].find('CURRENT') != -1:
                     return network.split('\t')[0]
             return -1
         except subprocess.CalledProcessError:
             return -1
 
-    def find_network_id_from_ssid(self, ssid):
+    def _find_network_id_from_ssid(self, ssid):
         try:
-            network_list = self.launch(
+            _network_list = self._launch(
                 "wpa_cli list_network").split('\n')[2:-1]
         except subprocess.CalledProcessError:
             return -1
         else:
-            for network in network_list:
+            for network in _network_list:
                 if network.decode('string_escape').find(ssid) != -1:
                     return int(network.split('\t')[0])
             return -1
 
 if __name__ == '__main__':
-    rwc = ReachWiFi()
+    rwc = wificontrol()
     print rwc.get_added_networks()
