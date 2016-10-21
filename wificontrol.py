@@ -338,7 +338,7 @@ class ReachWiFi(object):
         return False
 
     def start_connecting(self, ssid, callback=None,
-                         args=tuple(), timeout=30):
+                         args=tuple(), timeout=10, any_network=False):
         self.break_connecting()
         network_state = self.get_network_state()
         self.start_client_mode()
@@ -347,27 +347,31 @@ class ReachWiFi(object):
         if callback is not None:
             self.connection_thread = Thread(
                 target=self.connect,
-                args=(ssid, callback, args))
+                args=(ssid, callback, any_network, args))
         else:
             self.connection_thread = Thread(
                 target=self.connect,
                 args=(ssid,
-                      self.revert_on_connect_failure,
-                      network_state))
+                      self.revert_on_connect_failure, 
+                      any_network, network_state))
         self.connection_timer = Timer(timeout, self.stop_connecting)
         self.connection_event.set()
         self.connection_thread.start()
         self.connection_timer.start()
 
-    def connect(self, ssid, callback=None, args=None):
+    def connect(self, ssid, callback=None, any_network=False, args=None):
         result = False
-        self.disable_all_networks()
-        if (not self.network_not_added(ssid) and
-            self.try_to_connect(ssid) and
-                self.check_correct_connection(ssid)):
-            result = True
+        if not any_network:
+            self.disable_all_networks()
+            if (not self.network_not_added(ssid) and
+                self.try_to_connect(ssid) and
+                    self.check_correct_connection(ssid)):
+                result = True
+            else:
+                self.disconnect()
         else:
-            self.disconnect()
+            if wait_untill_connection_complete():
+                result = True
 
         self.connection_thread = None
         self.stop_timer_thread()
@@ -721,4 +725,3 @@ class ReachWiFi(object):
 if __name__ == '__main__':
     rwc = ReachWiFi()
     print rwc.get_added_networks()
-    
