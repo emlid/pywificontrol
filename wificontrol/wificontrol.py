@@ -495,7 +495,7 @@ class wificontrol(object):
     def _reconfigure(self):
         try:
             if self._wpa_supplicant_start:
-                self._launch("wpa_cli _reconfigure")
+                self._launch("wpa_cli reconfigure")
             return True
         except subprocess.CalledProcessError:
             return False
@@ -600,7 +600,7 @@ class wificontrol(object):
 
     def _enable_network(self, network_id):
         try:
-            self._launch("wpa_cli _enable_network {}".format(
+            self._launch("wpa_cli enable_network {}".format(
                 network_id))
             return True
         except subprocess.CalledProcessError:
@@ -620,7 +620,7 @@ class wificontrol(object):
 
     def _reconnect(self):
         try:
-            self._launch("wpa_cli _reconnect")
+            self._launch("wpa_cli reconnect")
             return True
         except (subprocess.CalledProcessError):
             return False
