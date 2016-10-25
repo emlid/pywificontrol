@@ -9,6 +9,8 @@ def ConnectionCallback(result, wific):
             print "In HOST mode"
             sys.exit(10)
         else:
+            print "hostapd service error"
+            print "For more information call \'systemctl status hostapd.service\'"
             sys.exit(2)
     else:
         status = wific.get_status()[1]
@@ -26,7 +28,14 @@ if __name__ == "__main__":
         if not rwc.start_client_mode():
             print "wpa_supplicant service error"
             print "For more information call \'systemctl status wpa_supplicant.service\'"
-            sys.exit(2)
+            print "Trying start HOST mode"
+            if not rwc.start_host_mode():
+                print "hostapd service error"
+                print "For more information call \'systemctl status hostapd.service\'"
+                sys.exit(2)
+            else:
+                print "In HOST mode"
+                sys.exit(10)
         print "Start connecting to networks"
         rwc.start_connecting(None, callback=ConnectionCallback,
                 args = rwc, any_network=True)
