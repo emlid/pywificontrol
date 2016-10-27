@@ -151,7 +151,6 @@ class wificontrol(object):
         except subprocess.CalledProcessError:
             return False
         except ModeChangeException, error:
-            print error
             return True
         else:
             self._wpa_supplicant_start = False
@@ -168,7 +167,6 @@ class wificontrol(object):
         except subprocess.CalledProcessError:
             return False
         except ModeChangeException, error:
-            print error
             return True
         else:
             self._hostapd_start = False
