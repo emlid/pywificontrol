@@ -180,7 +180,7 @@ class WiFiControl(object):
             return True
         try:
             self._launch(self._launch_rfkill_unblock_wifi)
-            self.systemd_manager.start_unit(self._hostapd_service)
+            self.systemd_manager.start_unit(self._wpa_supplicant_service)
         except subprocess.CalledProcessError:
             return False
         else:
