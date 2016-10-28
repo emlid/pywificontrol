@@ -17,13 +17,19 @@ sudo apt-get install wpa_supplicant
 This package works only in root mode   
 Wificontrol was tested on Intel Edison with Yocto image
 
+# Dependencies
+
+`sysdmanager`
+
+The package was tested with **Python 2.7**
+
 # Install
 
 `make install`
 
 # WiFiControl API
 
- - `wificontrol()` - constructor.
+ - `WiFiControl()` - constructor.
 
  
  - `start_host_mode()` - run WiFi interface as wireless AP mode
