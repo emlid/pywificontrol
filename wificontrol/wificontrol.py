@@ -22,6 +22,7 @@
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
 import subprocess
+from sysdmanager import SystemdManager
 from threading import Thread, Event, Timer
 
 class wpa_templates(object):
@@ -89,17 +90,15 @@ class ModeChangeException(Exception):
 class ExecutionError(Exception):
     pass
 
-class wificontrol(object):
+class WiFiControl(object):
     _default_path = {
         'hostapd_path': "/etc/hostapd/hostapd.conf",
         'wpa_supplicant_path': "/etc/wpa_supplicant/wpa_supplicant.conf",
         'p2p_supplicant_path': "/etc/wpa_supplicant/p2p_supplicant.conf",
         'hostname_path': '/etc/hostname'
     }
-    _launch_start_wpa_service = "systemctl start wpa_supplicant.service"
-    _launch_stop_wpa_service = "systemctl stop wpa_supplicant.service"
-    _launch_start_hostapd_service = "systemctl start hostapd.service"
-    _launch_stop_hostapd_service = "systemctl stop hostapd.service"
+    _wpa_supplicant_service = "wpa_supplicant.service"
+    _hostapd_service = "hostapd.service"
     _launch_restart_mdns = "systemctl restart mdns && sleep 2"
     _launch_rfkill_block_wifi = "rfkill block wifi"
     _launch_rfkill_unblock_wifi = "rfkill unblock wifi"
@@ -110,6 +109,7 @@ class wificontrol(object):
         self.p2p_supplicant_path = self._default_path['p2p_supplicant_path']
         self.hostname_path = self._default_path['hostname_path']
         self.interface = interface
+        self.systemd_manager = SystemdManager()
         try:
             self._launch("wpa_supplicant")
         except OSError:
@@ -146,8 +146,8 @@ class wificontrol(object):
                 not self._wpa_supplicant_start):
                 raise ModeChangeException("Already in host mode")
             self.disconnect()
-            self._launch(self._launch_stop_wpa_service)
-            self._launch(self._launch_start_hostapd_service)
+            self.systemd_manager.stop_unit(self._wpa_supplicant_service)
+            self.systemd_manager.start_unit(self._hostapd_service)
         except subprocess.CalledProcessError:
             return False
         except ModeChangeException, error:
@@ -162,8 +162,8 @@ class wificontrol(object):
             if (self._wpa_supplicant_start and
                 not self._hostapd_start):
                 raise ModeChangeException("Already in client mode")
-            self._launch(self._launch_stop_hostapd_service)
-            self._launch(self._launch_start_wpa_service)
+            self.systemd_manager.stop_unit(self._hostapd_service)
+            self.systemd_manager.start_unit(self._wpa_supplicant_service)
         except subprocess.CalledProcessError:
             return False
         except ModeChangeException, error:
@@ -180,7 +180,7 @@ class wificontrol(object):
             return True
         try:
             self._launch(self._launch_rfkill_unblock_wifi)
-            self._launch(self._launch_start_wpa_service)
+            self.systemd_manager.start_unit(self._hostapd_service)
         except subprocess.CalledProcessError:
             return False
         else:
@@ -194,9 +194,9 @@ class wificontrol(object):
             return True
         try:
             if self._wpa_supplicant_start:
-                self._launch(self._launch_stop_wpa_service)
+                self.systemd_manager.stop_unit(self._wpa_supplicant_service)
             elif self._hostapd_start:
-                self._launch(self._launch_stop_hostapd_service)
+                self.systemd_manager.stop_unit(self._hostapd_service)
             self._launch(self._launch_rfkill_block_wifi)
         except subprocess.CalledProcessError:
             return False
@@ -730,3 +730,5 @@ class wificontrol(object):
 if __name__ == '__main__':
     rwc = wificontrol()
     print rwc.get_added_networks()
+    print rwc.start_host_mode()
+    print rwc.start_client_mode()
