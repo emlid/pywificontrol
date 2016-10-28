@@ -23,71 +23,46 @@
 
 import subprocess
 from sysdmanager import SystemdManager
+from wifiutils import WpaSupplicantInterface, WpaSupplicantNetwork, NoInterfaceException
 from threading import Thread, Event, Timer
 
 class wpa_templates(object):
-    BASE = '''
-network={{
-\tssid=\"{}\"
-\tkey=\"{}\"
-}}
-'''
+    BASE = '''ssid=={}
+key=={}'''
 
-    OPEN = '''
-network={{
-\tssid=\"{}\"
-\tkey_mgmt=NONE
-}}
-'''
+    OPEN = '''ssid=={}
+key_mgmt==NONE'''
 
-    WEP = '''
-network={{
-\tssid=\"{}\"
-\tkey_mgmt=NONE
-\tgroup=WEP104 WEP40
-\twep_key0=\"{}\"
-}}
-'''
-    WPAPSK = '''
-network={{
-\tssid=\"{}\"
-\tkey_mgmt=WPA-PSK
-\tpairwise=CCMP TKIP
-\tgroup=CCMP TKIP
-\teap=TTLS PEAP TLS
-\tpsk=\"{}\"
-}}
-'''
-    WPA2PSK = '''
-network={{
-\tssid=\"{}\"
-\tproto=RSN
-\tkey_mgmt=WPA-PSK
-\tpairwise=CCMP TKIP
-\tgroup=CCMP TKIP
-\teap=TTLS PEAP TLS
-\tpsk=\"{}\"
-}}
-'''
+    WEP = '''ssid=={}
+key_mgmt==NONE
+group==WEP104 WEP40
+wep_key0=={}'''
 
-    WPAEAP = '''
-network={{
-\tssid=\"{}\"
-\tkey_mgmt=WPA-EAP
-\tpairwise=CCMP TKIP
-\tgroup=CCMP TKIP
-\teap=TTLS PEAP TLS
-\tidentity=\"{}\"
-\tpassword=\"{}\"
-\tphase1=\"peaplable=0\"
-}}
+    WPAPSK = '''ssid=={}
+key_mgmt==WPA-PSK
+pairwise==CCMP TKIP
+group==CCMP TKIP
+eap==TTLS PEAP TLS
+psk=={}
 '''
+    WPA2PSK = '''ssid=={}
+proto==RSN
+key_mgmt==WPA-PSK
+pairwise==CCMP TKIP
+group==CCMP TKIP
+eap==TTLS PEAP TLS
+psk=={}'''
 
+    WPAEAP = '''ssid=={}
+key_mgmt==WPA-EAP
+pairwise==CCMP TKIP
+group==CCMP TKIP
+eap==TTLS PEAP TLS
+identity=={}
+password=={}
+phase1==peaplable=0'''
 
 class ModeChangeException(Exception):
-    pass
-
-class ExecutionError(Exception):
     pass
 
 class WiFiControl(object):
@@ -99,7 +74,7 @@ class WiFiControl(object):
     }
     _wpa_supplicant_service = "wpa_supplicant.service"
     _hostapd_service = "hostapd.service"
-    _launch_restart_mdns = "systemctl restart mdns && sleep 2"
+    _mdns = "mdns.service"
     _launch_rfkill_block_wifi = "rfkill block wifi"
     _launch_rfkill_unblock_wifi = "rfkill unblock wifi"
 
@@ -109,7 +84,11 @@ class WiFiControl(object):
         self.p2p_supplicant_path = self._default_path['p2p_supplicant_path']
         self.hostname_path = self._default_path['hostname_path']
         self.interface = interface
-        self.systemd_manager = SystemdManager()
+
+        self._wpa_supplicant_interface = WpaSupplicantInterface(self.interface)
+        self._wpa_network_manage = WpaSupplicantNetwork()
+        self._systemd_manager = SystemdManager()
+
         try:
             self._launch("wpa_supplicant")
         except OSError:
@@ -141,49 +120,40 @@ class WiFiControl(object):
 
     # Change mode part
     def start_host_mode(self):
-        try:
-            if (self._hostapd_start and
-                not self._wpa_supplicant_start):
-                raise ModeChangeException("Already in host mode")
-            self.disconnect()
-            self.systemd_manager.stop_unit(self._wpa_supplicant_service)
-            self.systemd_manager.start_unit(self._hostapd_service)
-        except subprocess.CalledProcessError:
+        if (self._hostapd_start and
+            not self._wpa_supplicant_start):
+            return True
+        self._wpa_supplicant_interface.disconnect()
+        if (not self._systemd_manager.stop_unit(self._wpa_supplicant_service) or
+            not self._systemd_manager.start_unit(self._hostapd_service)):
             return False
-        except ModeChangeException, error:
-            return True
-        else:
-            self._wpa_supplicant_start = False
-            self._hostapd_start = True
-            return True
+        self._wpa_supplicant_start = False
+        self._hostapd_start = True
+        return True
 
     def start_client_mode(self):
-        try:
-            if (self._wpa_supplicant_start and
-                not self._hostapd_start):
-                raise ModeChangeException("Already in client mode")
-            self.systemd_manager.stop_unit(self._hostapd_service)
-            self.systemd_manager.start_unit(self._wpa_supplicant_service)
-        except subprocess.CalledProcessError:
+        if (self._wpa_supplicant_start and
+            not self._hostapd_start):
+            return True
+        if (not self._systemd_manager.stop_unit(self._hostapd_service) or
+            not self._systemd_manager.start_unit(self._wpa_supplicant_service)):
             return False
-        except ModeChangeException, error:
-            return True
-        else:
-            self._hostapd_start = False
-            self._wpa_supplicant_start = True
-            self._reconnect()
-            self._network_list = self._parse_network_list()
-            return True
+        self._hostapd_start = False
+        self._wpa_supplicant_start = True
+        self._wpa_supplicant_interface.reconnect()
+        self._network_list = self._parse_network_list()
+        return True
 
     def turn_on_wifi(self):
         if self._wifi_on:
             return True
         try:
             self._launch(self._launch_rfkill_unblock_wifi)
-            self.systemd_manager.start_unit(self._hostapd_service)
         except subprocess.CalledProcessError:
             return False
         else:
+            if not self._systemd_manager.start_unit(self._wpa_supplicant_service):
+                return False
             self._wpa_supplicant_start = True
             self._hostapd_start = False
             self._wifi_on = True
@@ -194,9 +164,9 @@ class WiFiControl(object):
             return True
         try:
             if self._wpa_supplicant_start:
-                self.systemd_manager.stop_unit(self._wpa_supplicant_service)
+                self._systemd_manager.stop_unit(self._wpa_supplicant_service)
             elif self._hostapd_start:
-                self.systemd_manager.stop_unit(self._hostapd_service)
+                self._systemd_manager.stop_unit(self._hostapd_service)
             self._launch(self._launch_rfkill_block_wifi)
         except subprocess.CalledProcessError:
             return False
@@ -727,8 +697,9 @@ class WiFiControl(object):
                     return int(network.split('\t')[0])
             return -1
 
+def create_network_dictionary(network_string):
+    list_parameters = network_string.split('\n')
+    return {k: v for k, v in (elem.split('==') for elem in list_parameters)}
+
 if __name__ == '__main__':
-    rwc = wificontrol()
-    print rwc.get_added_networks()
-    print rwc.start_host_mode()
-    print rwc.start_client_mode()
+    pass
