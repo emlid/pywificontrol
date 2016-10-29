@@ -1,1 +1,1 @@
-from .wificontrol import wificontrol
+from .wificontrol import WiFiControl
