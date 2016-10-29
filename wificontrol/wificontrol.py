@@ -252,7 +252,7 @@ class WiFiControl(object):
         except subprocess.CalledProcessError:
             return None
 
-    def set_p2p_name(self, name='reach'):
+    def _set_p2p_name(self, name='reach'):
         try:
             self._launch(
                 "sed -i s/^p2p_ssid_postfix=.*/p2p_ssid_postfix={}/ {}".format(
@@ -285,7 +285,7 @@ class WiFiControl(object):
 
     def set_device_names(self, name):
         self._set_hostap_name(name)
-        self.set_p2p_name(name)
+        self._set_p2p_name(name)
         self._set_host_name(name)
         try:
             self._launch(self._launch_restart_mdns)
