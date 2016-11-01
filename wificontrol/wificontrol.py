@@ -162,11 +162,11 @@ class WiFiControl(object):
     def turn_off_wifi(self):
         if not self._wifi_on:
             return True
+        if self._wpa_supplicant_start:
+            self._systemd_manager.stop_unit(self._wpa_supplicant_service)
+        elif self._hostapd_start:
+            self._systemd_manager.stop_unit(self._hostapd_service)
         try:
-            if self._wpa_supplicant_start:
-                self._systemd_manager.stop_unit(self._wpa_supplicant_service)
-            elif self._hostapd_start:
-                self._systemd_manager.stop_unit(self._hostapd_service)
             self._launch(self._launch_rfkill_block_wifi)
         except subprocess.CalledProcessError:
             return False
