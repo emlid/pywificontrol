@@ -128,52 +128,49 @@ class WiFiControl(object):
         self._connection_event = Event()
         self._network_list = None
         self._wifi_on = True
-        try:
-            self._launch("wpa_cli status")
-        except subprocess.CalledProcessError:
+
+        if (self.systemd_manager.is_active(self._wpa_supplicant_service)):
+            self._wpa_supplicant_start = True
+            self._hostapd_start = False
+            self._network_list = self._parse_network_list()
+        elif (self.systemd_manager.is_active(self._hostapd_service)):
             self._wpa_supplicant_start = False
             self._hostapd_start = True
             self._network_list = list()
         else:
-            self._wpa_supplicant_start = True
+            self._wpa_supplicant_start = False
             self._hostapd_start = False
-            self._network_list = self._parse_network_list()
+            self._network_list = list()
+
 
     # Change mode part
     def start_host_mode(self):
-        try:
-            if (self._hostapd_start and
-                not self._wpa_supplicant_start):
-                raise ModeChangeException("Already in host mode")
-            self.disconnect()
-            self.systemd_manager.stop_unit(self._wpa_supplicant_service)
-            self.systemd_manager.start_unit(self._hostapd_service)
-        except subprocess.CalledProcessError:
-            return False
-        except ModeChangeException, error:
-            return True
-        else:
-            self._wpa_supplicant_start = False
-            self._hostapd_start = True
+        if (self._hostapd_start and
+            not self._wpa_supplicant_start):
             return True
 
-    def start_client_mode(self):
-        try:
-            if (self._wpa_supplicant_start and
-                not self._hostapd_start):
-                raise ModeChangeException("Already in client mode")
-            self.systemd_manager.stop_unit(self._hostapd_service)
-            self.systemd_manager.start_unit(self._wpa_supplicant_service)
-        except subprocess.CalledProcessError:
+        if (not self.systemd_manager.stop_unit(self._wpa_supplicant_service) or
+            not self.systemd_manager.start_unit(self._hostapd_service)):
             return False
-        except ModeChangeException, error:
+
+        self._wpa_supplicant_start = False
+        self._hostapd_start = True
+
+        return True
+
+    def start_client_mode(self):
+        if (self._wpa_supplicant_start and
+            not self._hostapd_start):
             return True
-        else:
-            self._hostapd_start = False
-            self._wpa_supplicant_start = True
-            self._reconnect()
-            self._network_list = self._parse_network_list()
-            return True
+
+        if (not self.systemd_manager.stop_unit(self._hostapd_service) or
+            not self.systemd_manager.start_unit(self._wpa_supplicant_service)):
+            return False
+
+        self._hostapd_start = False
+        self._wpa_supplicant_start = True
+        self._network_list = self._parse_network_list()
+        return True
 
     def turn_on_wifi(self):
         if self._wifi_on:
@@ -728,7 +725,9 @@ class WiFiControl(object):
             return -1
 
 if __name__ == '__main__':
-    rwc = wificontrol()
+    rwc = WiFiControl()
+    print rwc._wpa_supplicant_start
+    print rwc._hostapd_start
     print rwc.get_added_networks()
     print rwc.start_host_mode()
     print rwc.start_client_mode()
