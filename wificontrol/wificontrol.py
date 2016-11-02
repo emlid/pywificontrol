@@ -152,7 +152,7 @@ class WiFiControl(object):
 
         wpa_stopped = self.systemd_manager.stop_unit(self._wpa_supplicant_service)
         time.sleep(5)
-        hostapd_started = self.systemd_manager.start_unit(self._hostapd_service))
+        hostapd_started = self.systemd_manager.start_unit(self._hostapd_service)
 
         if not wpa_stopped or not hostapd_started:
             return False
@@ -168,7 +168,7 @@ class WiFiControl(object):
 
         hostapd_stopped = self.systemd_manager.stop_unit(self._hostapd_service)
         time.sleep(5)
-        wpa_started = self.systemd_manager.start_unit(self._wpa_supplicant_service))
+        wpa_started = self.systemd_manager.start_unit(self._wpa_supplicant_service)
 
         if not hostapd_stopped or not wpa_started:
             return False
