@@ -23,7 +23,8 @@
 
 import subprocess
 from sysdmanager import SystemdManager
-from wifiutils import WpaSupplicantInterface, WpaSupplicantNetwork, NoInterfaceException
+from wifiutils import WpaSupplicantInterface, \
+    WpaSupplicantNetwork, NoInterfaceException
 from threading import Thread, Event, Timer
 
 class wpa_templates(object):
@@ -107,16 +108,19 @@ class WiFiControl(object):
         self._connection_event = Event()
         self._network_list = None
         self._wifi_on = True
-        try:
-            self._launch("wpa_cli status")
-        except subprocess.CalledProcessError:
+
+        if self._systemd_manager.is_active(self._wpa_supplicant_service):
+            self._wpa_supplicant_start = True
+            self._hostapd_start = False
+            self._network_list = self._parse_network_list()
+        elif self._systemd_manager.is_active(self._hostapd_service):
             self._wpa_supplicant_start = False
             self._hostapd_start = True
             self._network_list = list()
         else:
-            self._wpa_supplicant_start = True
+            self._wpa_supplicant_start = False
             self._hostapd_start = False
-            self._network_list = self._parse_network_list()
+            self._network_list = list()
 
     # Change mode part
     def start_host_mode(self):
@@ -222,7 +226,7 @@ class WiFiControl(object):
         except subprocess.CalledProcessError:
             return None
 
-    def set_p2p_name(self, name='reach'):
+    def _set_p2p_name(self, name='reach'):
         try:
             self._launch(
                 "sed -i s/^p2p_ssid_postfix=.*/p2p_ssid_postfix={}/ {}".format(
@@ -255,7 +259,7 @@ class WiFiControl(object):
 
     def set_device_names(self, name):
         self._set_hostap_name(name)
-        self.set_p2p_name(name)
+        self._set_p2p_name(name)
         self._set_host_name(name)
         try:
             self._launch(self._launch_restart_mdns)
@@ -264,14 +268,21 @@ class WiFiControl(object):
         else:
             return True
 
+    def get_current_network_ssid(self):
+        network = self._wpa_supplicant_interface.getProperty("CurrentNetwork")
+        if (network == "/" or
+            network is None):
+            return None
+        return self._wpa_network_manage.networkProperties(network)['ssid']
+
+
     def get_status(self):
         if self._wifi_on:
             if self._wpa_supplicant_start:
+                
                 id_current_network = int(self._find_current_network_id())
                 if id_current_network != -1:
                     network_params = dict()
-                    network_params['mac address'] = self._get_network_parameter(
-                        'bssid')
                     network_params['ssid'] = self._get_network_parameter('ssid')
                     network_params['IP address'] = self._get_network_parameter(
                         'ip_address')

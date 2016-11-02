@@ -1,4 +1,4 @@
-from wificontrol import wificontrol
+from wificontrol import WiFiControl
 import sys
 
 def ConnectionCallback(result, wific):

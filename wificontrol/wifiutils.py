@@ -197,8 +197,11 @@ class WpaSupplicantNetwork(WpaSupplicantDBus):
             print(error)
             return None
 
+    def networkEnable(self, network_path):
+        return self.__get_properties(network_path)['Enable']
+
     def networkProperties(self, network_path):
-        return self.__get_properties(network_path)
+        return self.__get_properties(network_path)['Properties']
 
 # class WifiManager(WpaSupplicantInterface, WpaSupplicantNetwork):
 
@@ -210,4 +213,8 @@ if __name__ == '__main__':
     wifi = WpaSupplicantInterface('wlp6s0')
     network_manager = WpaSupplicantNetwork()
     network_path = wifi.getProperty("CurrentNetwork")
-    print network_manager.networkProperties(network_path)['Properties']['ssid']
+    # print network_manager.networkProperties(network_path)['ssid']
+    # wifi.removeAllNetworks()
+    # nw = wifi.addNetwork({'ssid': 'EML33T5', 'psk': 'emrooftop'})
+    # for k, w in network_manager.networkProperties(nw).items():
+    #     print k, ':', w
