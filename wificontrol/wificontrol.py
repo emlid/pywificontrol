@@ -22,6 +22,8 @@
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
 import subprocess
+import time
+
 from sysdmanager import SystemdManager
 from threading import Thread, Event, Timer
 
@@ -145,12 +147,14 @@ class WiFiControl(object):
 
     # Change mode part
     def start_host_mode(self):
-        if (self._hostapd_start and
-            not self._wpa_supplicant_start):
+        if self._hostapd_start and not self._wpa_supplicant_start:
             return True
 
-        if (not self.systemd_manager.stop_unit(self._wpa_supplicant_service) or
-            not self.systemd_manager.start_unit(self._hostapd_service)):
+        wpa_stopped = self.systemd_manager.stop_unit(self._wpa_supplicant_service)
+        time.sleep(5)
+        hostapd_started = self.systemd_manager.start_unit(self._hostapd_service))
+
+        if not wpa_stopped or not hostapd_started:
             return False
 
         self._wpa_supplicant_start = False
@@ -159,17 +163,20 @@ class WiFiControl(object):
         return True
 
     def start_client_mode(self):
-        if (self._wpa_supplicant_start and
-            not self._hostapd_start):
+        if self._wpa_supplicant_start and not self._hostapd_start:
             return True
 
-        if (not self.systemd_manager.stop_unit(self._hostapd_service) or
-            not self.systemd_manager.start_unit(self._wpa_supplicant_service)):
+        hostapd_stopped = self.systemd_manager.stop_unit(self._hostapd_service)
+        time.sleep(5)
+        wpa_started = self.systemd_manager.start_unit(self._wpa_supplicant_service))
+
+        if not hostapd_stopped or not wpa_started:
             return False
 
         self._hostapd_start = False
         self._wpa_supplicant_start = True
         self._network_list = self._parse_network_list()
+
         return True
 
     def turn_on_wifi(self):
