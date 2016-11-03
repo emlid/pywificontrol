@@ -99,6 +99,8 @@ class WiFiControl(object):
     }
     _wpa_supplicant_service = "wpa_supplicant.service"
     _hostapd_service = "hostapd.service"
+    _start_host_command = "systemctl stop wpa_supplicant.service && sleep 2 && systemctl start hostapd.service"
+    _start_client_command = "systemctl stop hostapd.service && sleep 2 && systemctl start wpa_supplicant.service"
     _launch_restart_mdns = "systemctl restart mdns && sleep 2"
     _launch_rfkill_block_wifi = "rfkill block wifi"
     _launch_rfkill_unblock_wifi = "rfkill unblock wifi"
@@ -132,41 +134,36 @@ class WiFiControl(object):
         if (self.systemd_manager.is_active(self._wpa_supplicant_service)):
             self._wpa_supplicant_start = True
             self._hostapd_start = False
-            self._network_list = self._parse_network_list()
         elif (self.systemd_manager.is_active(self._hostapd_service)):
             self._wpa_supplicant_start = False
             self._hostapd_start = True
-            self._network_list = list()
         else:
             self._wpa_supplicant_start = False
             self._hostapd_start = False
-            self._network_list = list()
 
+        self._network_list = self._parse_network_list()
 
     # Change mode part
     def start_host_mode(self):
         if (self._hostapd_start and
             not self._wpa_supplicant_start):
             return True
-
-        if (not self.systemd_manager.stop_unit(self._wpa_supplicant_service) or
-            not self.systemd_manager.start_unit(self._hostapd_service)):
+        try:
+            self.launch(self._start_host_command)
+        except subprocess.CalledProcessError:
             return False
-
         self._wpa_supplicant_start = False
         self._hostapd_start = True
-
         return True
 
     def start_client_mode(self):
         if (self._wpa_supplicant_start and
             not self._hostapd_start):
             return True
-
-        if (not self.systemd_manager.stop_unit(self._hostapd_service) or
-            not self.systemd_manager.start_unit(self._wpa_supplicant_service)):
+        try:
+            self.launch(self._start_client_command)
+        except subprocess.CalledProcessError:
             return False
-
         self._hostapd_start = False
         self._wpa_supplicant_start = True
         self._network_list = self._parse_network_list()
