@@ -149,7 +149,7 @@ class WiFiControl(object):
             not self._wpa_supplicant_start):
             return True
         try:
-            self.launch(self._start_host_command)
+            self._launch(self._start_host_command)
         except subprocess.CalledProcessError:
             return False
         self._wpa_supplicant_start = False
@@ -161,7 +161,7 @@ class WiFiControl(object):
             not self._hostapd_start):
             return True
         try:
-            self.launch(self._start_client_command)
+            self._launch(self._start_client_command)
         except subprocess.CalledProcessError:
             return False
         self._hostapd_start = False
