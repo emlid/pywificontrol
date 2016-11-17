@@ -1,6 +1,12 @@
 import dbus
 
-class NoInterfaceException(Exception):
+class ServiceError(Exception):
+    pass
+
+class InterfaceError(Exception):
+    pass
+
+class PropertyError(Exception):
     pass
 
 class WpaSupplicantDBus(object):
@@ -16,8 +22,7 @@ class WpaSupplicantDBus(object):
             obj = self._bus.get_object(self._BASE_NAME, self._BASE_PATH)
             return dbus.Interface(obj, self._BASE_NAME)
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return None
+            raise ServiceError(error)
 
     def __get_properties(self):
         try:
@@ -25,46 +30,33 @@ class WpaSupplicantDBus(object):
             properties_interface = dbus.Interface(obj, dbus.PROPERTIES_IFACE)
             return properties_interface.GetAll(self._BASE_NAME)
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return None
+            raise ServiceError(error)
 
     def showWpaSupplicantProperties(self):
         return self.__get_properties()
 
     def getInterface(self, interface):
         wpa_interface = self.__get_interface()
-        if wpa_interface is None:
-            return False
         try:
             return wpa_interface.GetInterface(interface)
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return None
+            raise InterfaceError(error)
 
 class WpaSupplicantInterface(WpaSupplicantDBus):
 
     _INTERFACE_NAME = "fi.w1.wpa_supplicant1.Interface"
-    _PROPERTIES = {
-        "readable": ["State", "Scanning", "ApScan", "Ifname", 
-                     "Driver", "CurrentNetwork", "Networks", 
-                     "ScanInterval", "DisconnectReason"],
-        "writable": ["ApScan", "ScanInterval", "DisconnectReason"]
-    }
 
     def __init__(self, interface):
 
         super(WpaSupplicantInterface, self).__init__()
         self._interface_path = self.getInterface(interface)
-        if self._interface_path is None:
-            raise NoInterfaceException("No such interface")
 
     def __get_interface(self):
         try:
             obj = self._bus.get_object(self._BASE_NAME, self._interface_path)
             return dbus.Interface(obj, self._INTERFACE_NAME)
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return None
+            raise InterfaceError(error)
 
     def __get_property(self, property_name):
         try:
@@ -72,114 +64,102 @@ class WpaSupplicantInterface(WpaSupplicantDBus):
             properties_interface = dbus.Interface(obj, dbus.PROPERTIES_IFACE)
             return properties_interface.Get(self._INTERFACE_NAME, property_name)
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return None
+            raise PropertyError(error)
+
+    def __set_property(self, property_name, property_value):
+        try:
+            obj = self._bus.get_object(self._BASE_NAME, self._interface_path)
+            properties_interface = dbus.Interface(obj, dbus.PROPERTIES_IFACE)
+            properties_interface.Set(self._INTERFACE_NAME, property_name, property_value)
+        except dbus.exceptions.DBusException as error:
+            raise PropertyError(error)
+
+    def scan(self):
+        interface = self.__get_interface()
+        try:
+            return interface.Scan(dbus.Dictionary({"Type": "passive"}, 'sv'))
+        except dbus.exceptions.DBusException as error:
+            raise ServiceError(error)
 
     def addNetwork(self, network):
         interface = self.__get_interface()
-
-        if interface is None:
-            return False
         try:
-            return interface.AddNetwork(network)
+            return interface.AddNetwork(dbus.Dictionary(network, 'sv'))
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return None
+            raise ServiceError(error)
 
     def removeNetwork(self, network_path):
         interface = self.__get_interface()
-
-        if interface is None:
-            return False
-
         try:
             interface.RemoveNetwork(network_path)
-            return True
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return False
+            raise ServiceError(error)
 
     def removeAllNetworks(self):
         interface = self.__get_interface()
-
-        if interface is None:
-            return False
-
         try:
             interface.RemoveAllNetworks()
-            return True
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return False
+            raise ServiceError(error)
 
     def selectNetwork(self, network_path):
         interface = self.__get_interface()
-
-        if interface is None:
-            return False
-
         try:
             interface.SelectNetwork(network_path)
-            return True
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return False
+            raise ServiceError(error)
 
     def networkReply(self, network_path, parameter, value):
         interface = self.__get_interface()
-
-        if interface is None:
-            return False
-
         try:
             interface.NetworkReply(network_path, parameter, value)
-            return True
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return False
+            raise ServiceError(error)
 
     def signalPoll(self):
         interface = self.__get_interface()
-
-        if interface is None:
-            return False
-
         try:
             return interface.SignalPoll()
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return None
+            raise ServiceError(error)
 
     def reconnect(self):
         interface = self.__get_interface()
-
-        if interface is None:
-            return False
-
         try:
             interface.Reconnect()
-            return True
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return False
+            raise ServiceError(error)
 
     def disconnect(self):
         interface = self.__get_interface()
-
-        if interface is None:
-            return False
-
         try:
             interface.Disconnect()
-            return True
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return False
-    def getAvailableProperties(self):
-        return self._PROPERTIES
+            raise ServiceError(error)
 
-    def getProperty(self, proterty):
-        return self.__get_property(proterty)
+    def getState(self):
+        return self.__get_property("State")
+
+    def getInterfaceName(self):
+        return self.__get_property("Ifname")
+
+    def getScanning(self):
+        return self.__get_property("Scanning")
+
+    def getApScan(self):
+        return self.__get_property("ApScan")
+
+    def setApScan(self, value):
+        return self.__set_property("ApScan", dbus.UInt32(value))
+
+    def getCurrentNetwork(self):
+        return self.__get_property("CurrentNetwork")
+
+    def getNetworks(self):
+        return self.__get_property("Networks")
+
+    def getNetworks(self):
+        return self.__get_property("DisconnectReason")
 
 class WpaSupplicantNetwork(WpaSupplicantDBus):
 
@@ -194,8 +174,7 @@ class WpaSupplicantNetwork(WpaSupplicantDBus):
             properties_interface = dbus.Interface(obj, dbus.PROPERTIES_IFACE)
             return properties_interface.GetAll(self._NETWORK_NAME)
         except dbus.exceptions.DBusException as error:
-            print(error)
-            return None
+            raise PropertyError(error)
 
     def networkEnable(self, network_path):
         return self.__get_properties(network_path)['Enable']
@@ -212,9 +191,5 @@ if __name__ == '__main__':
 
     wifi = WpaSupplicantInterface('wlp6s0')
     network_manager = WpaSupplicantNetwork()
-    network_path = wifi.getProperty("CurrentNetwork")
-    # print network_manager.networkProperties(network_path)['ssid']
-    # wifi.removeAllNetworks()
-    # nw = wifi.addNetwork({'ssid': 'EML33T5', 'psk': 'emrooftop'})
-    # for k, w in network_manager.networkProperties(nw).items():
-    #     print k, ':', w
+    network_path = wifi.getCurrentNetwork()
+    print network_manager.networkProperties(network_path)['ssid']
