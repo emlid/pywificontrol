@@ -10,10 +10,10 @@ class PropertyError(Exception):
     pass
 
 class WpaSupplicantDBus(object):
- 
+
     _BASE_NAME = "fi.w1.wpa_supplicant1"
     _BASE_PATH = "/fi/w1/wpa_supplicant1"
- 
+
     def __init__(self):
         self._bus = dbus.SystemBus()
 
@@ -45,11 +45,14 @@ class WpaSupplicantDBus(object):
 class WpaSupplicantInterface(WpaSupplicantDBus):
 
     _INTERFACE_NAME = "fi.w1.wpa_supplicant1.Interface"
-    
+
     def __init__(self, interface):
 
         super(WpaSupplicantInterface, self).__init__()
-        self._interface_path = self.getInterface(interface)
+        self.interface = interface
+
+    def initialize(self):
+        self._interface_path = self.getInterface(self.interface)
 
     def __get_interface(self):
         try:
@@ -184,7 +187,9 @@ class WpaSupplicantNetwork(WpaSupplicantDBus):
 
 if __name__ == '__main__':
     wifi = WpaSupplicantInterface('wlp6s0')
+    wifi.initialize()
     network_manager = WpaSupplicantNetwork()
     network_path = wifi.getCurrentNetwork()
+    wifi.setApScan("0")
     new_network={"ssid": "myssid", "psk": "mypassword"}
     print(network_manager.networkProperties(network_path)['ssid'])
