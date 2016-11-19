@@ -21,47 +21,61 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
+import re
 import subprocess
 from sysdmanager import SystemdManager
-from wifiutils import WpaSupplicantInterface, \
-    WpaSupplicantNetwork, NoInterfaceException
+
+from utils import ConfigurationFileUpdater, NullFileUpdater
+from utils import WpaSupplicantInterface, WpaSupplicantNetwork
+from utils import FileError
+from utils import ServiceError, InterfaceError, PropertyError
+
 from threading import Thread, Event, Timer
 
 class wpa_templates(object):
-    BASE = '''ssid=={}
-key=={}'''
+    def __init__(self, network_dict):
 
-    OPEN = '''ssid=={}
-key_mgmt==NONE'''
+        self.security = network_dict.get('security')
+        self.name = network_dict.get('ssid').encode('utf-8')
+        self.password = network_dict.get('password').encode('utf-8')
+        self.identity = network_dict.get('identity').encode('utf-8')
 
-    WEP = '''ssid=={}
-key_mgmt==NONE
-group==WEP104 WEP40
-wep_key0=={}'''
-
-    WPAPSK = '''ssid=={}
-key_mgmt==WPA-PSK
-pairwise==CCMP TKIP
-group==CCMP TKIP
-eap==TTLS PEAP TLS
-psk=={}
-'''
-    WPA2PSK = '''ssid=={}
-proto==RSN
-key_mgmt==WPA-PSK
-pairwise==CCMP TKIP
-group==CCMP TKIP
-eap==TTLS PEAP TLS
-psk=={}'''
-
-    WPAEAP = '''ssid=={}
-key_mgmt==WPA-EAP
-pairwise==CCMP TKIP
-group==CCMP TKIP
-eap==TTLS PEAP TLS
-identity=={}
-password=={}
-phase1==peaplable=0'''
+    def __iter__(self):
+        if (security == 'open'):
+            yield "ssid", "\"{}\"".format(self.name)
+            yield "key_mgmt", "NONE"
+        elif (security == 'wep'):
+            yield "ssid", "\"{}\"".format(self.name)
+            yield "key_mgmt", "NONE"
+            yield "group", "WEP104 WEP40"
+            yield "wep_key0", "\"{}\"".format(self.password)
+        elif (security == 'wpapsk'):
+            yield "ssid", "\"{}\"".format(self.name)
+            yield "key_mgmt", "WPA-PSK"
+            yield "pairwise", "CCMP TKIP"
+            yield "group", "CCMP TKIP"
+            yield "eap", "TTLS PEAP TLS"
+            yield "psk", "\"{}\"".format(self.password)
+        elif (security == 'wpa2psk'):
+            yield "ssid", "\"{}\"".format(self.name)
+            yield "proto", "RSN"
+            yield "key_mgmt", "WPA-PSK"
+            yield "pairwise", "CCMP TKIP"
+            yield "group", "CCMP TKIP"
+            yield "eap", "TTLS PEAP TLS"
+            yield "psk", "\"{}\"".format(self.password)
+        elif (security == 'wpaeap'):
+            yield "ssid", "\"{}\"".format(self.name)
+            yield "key_mgmt", "WPA-EAP"
+            yield "pairwise", "CCMP TKIP"
+            yield "group", "CCMP TKIP"
+            yield "eap", "TTLS PEAP TLS"
+            yield "identity", "\"{}\"".format(self.identity)
+            yield "password", "\"{}\"".format(self.password)
+            yield "phase1", "peaplable=0"
+        else:
+            yield "ssid", "\"{}\"".format(self.name)
+            yield "psk", "\"{}\"".format(self.password)
 
 class ModeChangeException(Exception):
     pass
@@ -73,11 +87,10 @@ class WiFiControl(object):
         'p2p_supplicant_path': "/etc/wpa_supplicant/p2p_supplicant.conf",
         'hostname_path': '/etc/hostname'
     }
-    _wpa_supplicant_service = "wpa_supplicant.service"
-    _hostapd_service = "hostapd.service"
-    _mdns = "mdns.service"
-    _launch_rfkill_block_wifi = "rfkill block wifi"
-    _launch_rfkill_unblock_wifi = "rfkill unblock wifi"
+    _wpas_control = lambda action: "systemctl {} wpa_supplicant.service && sleep 2".format(action)
+    _hostapd_control = lambda action: "systemctl {} hostapd.service && sleep 2".format(action)
+    _launch_restart_mdns = "systemctl restart mdns.service && sleep 2"
+    _rfkill_wifi_control = lambda action: "rfkill {} wifi".format(action)
 
     def __init__(self, interface='wlan0'):
         self.hostapd_path = self._default_path['hostapd_path']
@@ -85,10 +98,6 @@ class WiFiControl(object):
         self.p2p_supplicant_path = self._default_path['p2p_supplicant_path']
         self.hostname_path = self._default_path['hostname_path']
         self.interface = interface
-
-        self._wpa_supplicant_interface = WpaSupplicantInterface(self.interface)
-        self._wpa_network_manage = WpaSupplicantNetwork()
-        self._systemd_manager = SystemdManager()
 
         try:
             self._launch("wpa_supplicant")
@@ -102,93 +111,53 @@ class WiFiControl(object):
             except subprocess.CalledProcessError:
                 pass
 
+        self._systemd_manager = SystemdManager()
+        self._wpa_supplicant_interface = WpaSupplicantInterface(self.interface)
+        self._wpa_network_manage = WpaSupplicantNetwork()
+        try:
+            self._config_updater = ConfigurationFileUpdater(self.wpa_supplicant_path)
+        except FileError:
+            self._config_updater = NullFileUpdater()
+
         self._connection_thread = None
         self._connection_timer = None
         self._break_event = Event()
         self._connection_event = Event()
         self._network_list = None
-        self._wifi_on = True
+        
+        self._wpa_supplicant_start = lambda: self._systemd_manager.is_active("wpa_supplicant.service")
+        self._hostapd_start = lambda: self._systemd_manager.is_active("hostapd.service")
+        self._wifi_on = lambda: (self._wpa_supplicant_start or self._hostapd_start)
 
-        if self._systemd_manager.is_active(self._wpa_supplicant_service):
-            self._wpa_supplicant_start = True
-            self._hostapd_start = False
-            self._network_list = self._parse_network_list()
-        elif self._systemd_manager.is_active(self._hostapd_service):
-            self._wpa_supplicant_start = False
-            self._hostapd_start = True
-            self._network_list = list()
-        else:
-            self._wpa_supplicant_start = False
-            self._hostapd_start = False
-            self._network_list = list()
+        if self._wpa_supplicant_start:
+            self._wpa_supplicant_interface.initialize()
 
     # Change mode part
     def start_host_mode(self):
-        if (self._hostapd_start and
-            not self._wpa_supplicant_start):
-            return True
-        self._wpa_supplicant_interface.disconnect()
-        if (not self._systemd_manager.stop_unit(self._wpa_supplicant_service) or
-            not self._systemd_manager.start_unit(self._hostapd_service)):
-            return False
-        self._wpa_supplicant_start = False
-        self._hostapd_start = True
-        return True
+        self._launch(self._wpas_control("stop"))
+        self._launch(self._hostapd_control("start"))
 
     def start_client_mode(self):
-        if (self._wpa_supplicant_start and
-            not self._hostapd_start):
-            return True
-        if (not self._systemd_manager.stop_unit(self._hostapd_service) or
-            not self._systemd_manager.start_unit(self._wpa_supplicant_service)):
-            return False
-        self._hostapd_start = False
-        self._wpa_supplicant_start = True
+        self._launch(self._hostapd_control("stop"))
+        self._launch(self._wpas_control("start"))
+        self._wpa_supplicant_interface.initialize()
         self._wpa_supplicant_interface.reconnect()
-        self._network_list = self._parse_network_list()
-        return True
-
+        
     def turn_on_wifi(self):
-        if self._wifi_on:
-            return True
-        try:
-            self._launch(self._launch_rfkill_unblock_wifi)
-        except subprocess.CalledProcessError:
-            return False
-        else:
-            if not self._systemd_manager.start_unit(self._wpa_supplicant_service):
-                return False
-            self._wpa_supplicant_start = True
-            self._hostapd_start = False
-            self._wifi_on = True
-            return True
+        self._launch(self._rfkill_wifi_control("unblock"))
+        self._launch(self._wpas_control("start"))
 
     def turn_off_wifi(self):
-        if not self._wifi_on:
-            return True
-        if self._wpa_supplicant_start:
-            self._systemd_manager.stop_unit(self._wpa_supplicant_service)
-        elif self._hostapd_start:
-            self._systemd_manager.stop_unit(self._hostapd_service)
-        try:
-            self._launch(self._launch_rfkill_block_wifi)
-        except subprocess.CalledProcessError:
-            return False
-        else:
-            self._wpa_supplicant_start = False
-            self._hostapd_start = False
-            self._wifi_on = False
-            return True
+        self._launch(self._wpas_control("stop"))
+        self._launch(self._hostapd_control("stop"))
+        self._launch(self._rfkill_wifi_control("block"))
 
     def get_wifi_turned_on(self):
         return self._wifi_on
 
     def _set_hostap_name(self, name='reach'):
         try:
-            config = self._launch("ifconfig {}".format(self.interface))
-            first = config.find('HWaddr') + 18
-            last = first + 6
-            mac_addr = config[first:last]
+            mac_addr = self._get_device_mac()[-6:]
             self._launch(
                 "sed -i s/^ssid=.*/ssid={}{}/ {}".format(name, mac_addr,
                                                          self.hostapd_path))
@@ -268,60 +237,80 @@ class WiFiControl(object):
         else:
             return True
 
-    def get_current_network_ssid(self):
-        network = self._wpa_supplicant_interface.getProperty("CurrentNetwork")
-        if (network == "/" or
-            network is None):
-            return None
-        return self._wpa_network_manage.networkProperties(network)['ssid']
+    def _get_network_ssid(self, network_path):
+        network = self._wpa_supplicant_interface.getCurrentNetwork()
+        ssid = self._wpa_network_manage.networkProperties(network)['ssid']
+        try:
+            return str(ssid.decode('hex')).strip("\"")
+        except TypeError:
+            return str(ssid).strip("\"")
 
+    def _get_current_network_ssid(self):
+        network = self._wpa_supplicant_interface.getCurrentNetwork()
+        return self._get_network_ssid(network)
 
+    def _get_device_ip(self):
+        ip_pattern = "[0-9]+.[0-9]+.[0-9]+.[0-9]+"
+        data = self._launch("ifconfig {}".format(self.interface))
+        return re.search("inet addr:{}".format(ip_pattern), data).group(0)[10:]
+
+    def _get_device_mac(self):
+        mac_pattern = "..:..:..:..:..:.."
+        data = self._launch("ifconfig {}".format(self.interface))
+        return re.search(mac_pattern, data).group(0)
+
+    def _get_state(self):
+        if self._wpa_supplicant_start:
+            return "wpa_supplicant"
+        if self._hostapd_start:
+            return "hostapd"
+        return "wifi_off"
+      
     def get_status(self):
-        if self._wifi_on:
-            if self._wpa_supplicant_start:
-                
-                id_current_network = int(self._find_current_network_id())
-                if id_current_network != -1:
-                    network_params = dict()
-                    network_params['ssid'] = self._get_network_parameter('ssid')
-                    network_params['IP address'] = self._get_network_parameter(
-                        'ip_address')
-                    network_state = ("wpa_supplicant", network_params)
-                else:
-                    network_state = ("wpa_supplicant", None)
-            else:
-                network_state = ("hostapd", None)
+        network_params = dict()
+        try:
+            network_params['ssid'] = self._get_current_network_ssid()
+        except PropertyError:
+            network_params = None
         else:
-            network_state = ("wifi off", None)
-        return network_state
+            network_params['mac address'] = self._get_device_mac()
+            network_params['IP address'] = self._get_device_ip()
+        finally:
+            network_state = (self._get_state(), network_params)
+            return network_state
 
     # Client mode part
     def get_added_networks(self):
-        self._network_list = self._parse_network_list()
-        return self._network_list
+        return self._config_updater.networks
 
-    def add_network(self, ssid_psk_security):
-        if (self._network_not_added(ssid_psk_security) and
-                self._add_network_to_wpa_supplicant_file(ssid_psk_security)):
-            self.get_added_networks()
-            return True
-        return False
+    def add_network(self, network_parameters):
+        network = dict(wpa_templates(network_parameters))
+        try:
+            self._config_updater.addNetwork(network)
+        except AttributeError:
+            pass
+        else:
+            if self._wpa_supplicant_start:
+                self._wpa_supplicant_interface.addNetwork(network)
 
-    def remove_network(self, ssid):
-        if not self._network_not_added(ssid):
-            result = self._remove_network_from_wpa_supplicant_file(ssid)
-            if (result):
-                self.get_added_networks()
-                return True
-        return False
+    def _find_remove_network_path(self, aim_network):
+        for network in self._wpa_supplicant_interface.getNetworks():
+            if self._get_network_ssid(network) == aim_network['ssid']:
+                return network
 
-    def change_priority(self, ssid_list):
-        info = self._read_wpa_supplicant_file()
-        if info is not None:
-            new_file = self._create_new_networks_priority_file(info, ssid_list)
-            if new_file is not None:
-                return self._write_new_wpa_supplicant_file(new_file)
-        return False
+    def remove_network(self, network):
+        self._config_updater.removeNetwork(network)
+        self._wpa_network_manage.removeNetwork(self._find_remove_network_path(network))
+
+    # def change_priority(self, ssid_list):
+    #     info = self._read_wpa_supplicant_file()
+    #     if info is not None:
+    #         new_file = self._create_new_networks_priority_file(info, ssid_list)
+    #         if new_file is not None:
+    #             return self._write_new_wpa_supplicant_file(new_file)
+    #     return False
+
+    ############################################################################
 
     def start_connecting(self, ssid, callback=None,
                          args=None, timeout=10, any_network=False):
@@ -397,148 +386,13 @@ class WiFiControl(object):
         else:
             return True
 
-    # Additional functional
-    # ADD NETWORK
-    def _network_not_added(self, ssid):
-        for network in self._network_list:
-            if (ssid["ssid"].encode('utf-8').decode('string_escape') ==
-                    network["ssid"].decode('string_escape')):
-                return False
-        return True
-
-    def _add_network_to_wpa_supplicant_file(self, ssid_psk_security):
-        try:
-            security = ssid_psk_security['security'].encode('utf-8')
-        except KeyError:
-            return False
-        else:
-            network_to_add = self._create_wifi_network(ssid_psk_security,
-                                                      security)
-            if not network_to_add:
-                return False
-            try:
-                wpa_supplicant_file = open(self.wpa_supplicant_path, 'a')
-                wpa_supplicant_file.write(network_to_add)
-                wpa_supplicant_file.close()
-            except IOError:
-                return False
-            else:
-                return True
-
-    def _create_wifi_network(self, ssid_psk, security):
-        network = ''
-        try:
-            if (security == 'open'):
-                network = wpa_templates.OPEN.format(
-                    ssid_psk["ssid"].encode('utf-8').decode('string_escape'))
-            elif (security == 'wep'):
-                network = wpa_templates.WEP.format(
-                    ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
-                    ssid_psk["password"].encode('utf-8'))
-            elif (security == 'wpapsk'):
-                network = wpa_templates.WPAPSK.format(
-                    ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
-                    ssid_psk["password"].encode('utf-8'))
-            elif (security == 'wpa2psk'):
-                network = wpa_templates.WPA2PSK.format(
-                    ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
-                    ssid_psk["password"].encode('utf-8'))
-            elif (security == 'wpaeap'):
-                network = wpa_templates.WPAEAP.format(
-                    ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
-                    ssid_psk["identity"].encode('utf-8').
-                    decode('string_escape'),
-                    ssid_psk["password"].encode('utf-8'))
-            else:
-                network = wpa_templates.BASE.format(
-                    ssid_psk["ssid"].encode('utf-8').decode('string_escape'),
-                    ssid_psk["password"].encode('utf-8'))
-        except KeyError:
-            pass
-        return network
-
-    # REMOVE NETWORK
-    def _remove_network_from_wpa_supplicant_file(self, ssid):
-        info = self._read_wpa_supplicant_file()
-        if not info:
-            return False
-        ssid_symbol_num = info.find('{}'.format(
-            ssid['ssid'].encode('utf-8').decode('string_escape')))
-        last = info.find('}', ssid_symbol_num) + 2
-        first = info.rfind('\nnetwork', 0, ssid_symbol_num)
-        info = info.replace(info[first:last], '')
-        if not self._write_new_wpa_supplicant_file(info):
-            return False
-        return True
-
-    def _reconfigure(self):
-        try:
-            if self._wpa_supplicant_start:
-                self._launch("wpa_cli reconfigure")
-            return True
-        except subprocess.CalledProcessError:
-            return False
-
-    # CHANGE PRIORITY
-    def _create_new_networks_priority_file(self, old_file, ssid_list):
-        file_header = self._create_wpa_supplicant_header(old_file)
-        file_new_networks = self._create_new_file_part_with_network_list(
-            old_file, ssid_list)
-        new_file = file_header + file_new_networks
-        return new_file
-
-    def _create_wpa_supplicant_header(self, wpa_file):
-        try:
-            head_last = wpa_file.index('\nnetwork={')
-        except ValueError:
-            return None
-        else:
-            return wpa_file[0:head_last]
-
-    def _create_wpa_supplicant_network_list(self, wpa_file):
-        try:
-            first = wpa_file.index('\nnetwork={')
-        except ValueError:
-            return None
-        else:
-            file_networks = list()
-            for network in wpa_file[first:].strip().split('\n\n'):
-                file_networks.append('\n' + network + '\n')
-            return file_networks
-
-    def _create_new_file_part_with_network_list(self, old_file, ssid_list):
-        file_network_list_part = ''
-        list_network = self._create_wpa_supplicant_network_list(old_file)
-        if (list_network is None or
-                ssid_list is None):
-            return None
-        for new_network in ssid_list:
-            for old_network in list_network:
-                if old_network.find(new_network['ssid'].encode('utf-8').
-                                    decode('string_escape')) != -1:
-                    file_network_list_part += old_network
-                    break
-        return file_network_list_part
-
-    def _read_wpa_supplicant_file(self):
-        try:
-            wpa_supplicant_file = open(self.wpa_supplicant_path, 'r')
-            info = wpa_supplicant_file.read()
-            wpa_supplicant_file.close()
-        except (IOError, ValueError):
-            return None
-        else:
-            return info
-
-    def _write_new_wpa_supplicant_file(self, new_file):
-        try:
-            wpa_supplicant_file = open(self.wpa_supplicant_path, 'w')
-            wpa_supplicant_file.write(new_file)
-            wpa_supplicant_file.close()
-        except (IOError, ValueError):
-            return False
-        else:
-            return True
+    # # CHANGE PRIORITY
+    # def _create_new_networks_priority_file(self, old_file, ssid_list):
+    #     file_header = self._create_wpa_supplicant_header(old_file)
+    #     file_new_networks = self._create_new_file_part_with_network_list(
+    #         old_file, ssid_list)
+    #     new_file = file_header + file_new_networks
+    #     return new_file
 
     # START CONNECTING
     def _break_connecting(self):
@@ -551,20 +405,6 @@ class WiFiControl(object):
                 self.stop_connecting()
             except AttributeError:
                 pass
-
-    def _get_network_state(self):
-        if self._wpa_supplicant_start:
-            id_current_network = int(self._find_current_network_id())
-            if id_current_network != -1:
-                network_params = dict()
-                network_params['ssid'] = self._get_network_parameter(
-                    'ssid').decode('string_escape')
-                network_state = ("wpa_supplicant", network_params)
-            else:
-                network_state = ("wpa_supplicant", None)
-        else:
-            network_state = ("hostapd", None)
-        return network_state
 
     # CONNECT
     # ONLY FOR THREAD!!!
@@ -615,102 +455,12 @@ class WiFiControl(object):
         if not result:
             self.start_host_mode()
 
-    # DISCONNETCT
-    def _disable_current_network(self):
-        try:
-            current_network_id = self._find_current_network_id()
-            if current_network_id != -1:
-                self._launch("wpa_cli disable_network {}".format(
-                    current_network_id))
-            return True
-        except subprocess.CalledProcessError:
-            return False
-
     # COMMON
     def _launch(self, args):
         out_return = subprocess.check_output(
             args, stderr=subprocess.PIPE, shell=True)
         return out_return
 
-    def _parse_network_list(self):
-        info = self._read_wpa_supplicant_file()
-        if not info:
-            return []
-        try:
-            result = list()
-            first = info.index('network')
-        except ValueError:
-            return []
-        else:
-            info = info[first:].strip()
-            list_of_networks = info.split('}\n')
-            for network in list_of_networks:
-                network_to_add = dict()
-                ssid = network.find('ssid')
-                if ssid != -1:
-                    ssid_last = network.find('\n', ssid)
-                    network_to_add['ssid'] = network[
-                        ssid + 5:ssid_last].strip('\"')
-                else:
-                    network_to_add['ssid'] = 'Unknown'
-                security = network.find('key_mgmt')
-                if security != -1:
-                    security_last = network.find('\n', security)
-                    if (network[security +
-                                9:security_last].strip('\"') == 'NONE'):
-                        if (network.find('WEP') != -1):
-                            network_to_add['security'] = 'WEP'
-                        else:
-                            network_to_add['security'] = 'OPEN'
-                    elif (network.find('proto') != -1):
-                        network_to_add['security'] = 'WPA2-PSK'
-                    else:
-                        network_to_add['security'] = network[
-                            security + 9:security_last].strip('\"')
-                else:
-                    network_to_add['security'] = 'NONE'
-                result.append(network_to_add)
-            return result
-
-    def _get_network_parameter(self, parameter):
-        try:
-            network_status = self._launch("wpa_cli status").split("\n")[1:-1]
-            for network_params in network_status:
-                try:
-                    network_params.split('=').index(parameter)
-                    return network_params.split('=')[1]
-                except ValueError:
-                    pass
-            return None
-        except subprocess.CalledProcessError:
-            return None
-
-    def _find_current_network_id(self):
-        try:
-            _network_list = self._launch(
-                "wpa_cli list_network").split("\n")[2:-1]
-            for network in _network_list:
-                if network.split('\t')[-1].find('CURRENT') != -1:
-                    return network.split('\t')[0]
-            return -1
-        except subprocess.CalledProcessError:
-            return -1
-
-    def _find_network_id_from_ssid(self, ssid):
-        try:
-            _network_list = self._launch(
-                "wpa_cli list_network").split('\n')[2:-1]
-        except subprocess.CalledProcessError:
-            return -1
-        else:
-            for network in _network_list:
-                if network.decode('string_escape').find(ssid) != -1:
-                    return int(network.split('\t')[0])
-            return -1
-
-def create_network_dictionary(network_string):
-    list_parameters = network_string.split('\n')
-    return {k: v for k, v in (elem.split('==') for elem in list_parameters)}
-
 if __name__ == '__main__':
-    pass
+    wifi = WiFiControl('wlp6s0')
+    print wifi.get_status()
