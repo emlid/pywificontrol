@@ -13,8 +13,8 @@ class NetworkTemplate(object):
     def __str__(self):
         network_parameters = list()
         for key, value in self.network_parameters.items():
-            if key in ('ssid', 'psk'):
-                network_parameters.append(self.string_template.format(key, value.strip("\'\"")))
+            if key in ('ssid', 'psk', 'identity'):
+                network_parameters.append(self.string_template.format(key, value))
             else:
                 network_parameters.append(self.variant_template.format(key, value))
 
@@ -75,7 +75,7 @@ class ConfigurationFileUpdater(object):
 
     def __parse_network(self, raw_network):
         param_pair_list = raw_network[raw_network.find('\t'):raw_network.find('}')].strip().split('\n')
-        return {key.strip(): parameter for key, parameter in (param_pair.split('=', 1) for param_pair in param_pair_list)}
+        return {key.strip(): parameter.strip("\"") for key, parameter in (param_pair.split('=', 1) for param_pair in param_pair_list)}
 
     def __create_config_file(self):
         return self.head + '\n' + '\n'.join([str(NetworkTemplate(network)) for network in self.networks])
