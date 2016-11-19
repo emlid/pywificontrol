@@ -45,7 +45,7 @@ class WpaSupplicantDBus(object):
 class WpaSupplicantInterface(WpaSupplicantDBus):
 
     _INTERFACE_NAME = "fi.w1.wpa_supplicant1.Interface"
-
+    
     def __init__(self, interface):
 
         super(WpaSupplicantInterface, self).__init__()
@@ -182,14 +182,9 @@ class WpaSupplicantNetwork(WpaSupplicantDBus):
     def networkProperties(self, network_path):
         return self.__get_properties(network_path)['Properties']
 
-# class WifiManager(WpaSupplicantInterface, WpaSupplicantNetwork):
-
-#     def __init__(self, interface):
-#         super(WifiManager, self).__init__(interface)
-    
 if __name__ == '__main__':
-
     wifi = WpaSupplicantInterface('wlp6s0')
     network_manager = WpaSupplicantNetwork()
     network_path = wifi.getCurrentNetwork()
-    print network_manager.networkProperties(network_path)['ssid']
+    new_network={"ssid": "myssid", "psk": "mypassword"}
+    print(network_manager.networkProperties(network_path)['ssid'])
