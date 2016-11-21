@@ -101,7 +101,7 @@ class ConfigurationFileUpdater(object):
         try:
             self.networks.remove(self.__findNetwork(network))
         except ValueError:
-            pass
+            raise AttributeError("No such network")
         else:
             self.__update_config_file()
 
