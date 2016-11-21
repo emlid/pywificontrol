@@ -40,10 +40,10 @@ class WiFiControl(object):
         'p2p_supplicant_path': "/etc/wpa_supplicant/p2p_supplicant.conf",
         'hostname_path': '/etc/hostname'
     }
-    _wpas_control = lambda action: "systemctl {} wpa_supplicant.service && sleep 2".format(action)
-    _hostapd_control = lambda action: "systemctl {} hostapd.service && sleep 2".format(action)
+    _wpas_control = lambda self, action: "systemctl {} wpa_supplicant.service && sleep 2".format(action)
+    _hostapd_control = lambda self, action: "systemctl {} hostapd.service && sleep 2".format(action)
     _launch_restart_mdns = "systemctl restart mdns.service && sleep 2"
-    _rfkill_wifi_control = lambda action: "rfkill {} wifi".format(action)
+    _rfkill_wifi_control = lambda self, action: "rfkill {} wifi".format(action)
 
     def __init__(self, interface='wlan0'):
         self.hostapd_path = self._default_path['hostapd_path']
@@ -78,9 +78,9 @@ class WiFiControl(object):
         self._connection_event = Event()
         self._network_list = None
         
-        self._wpa_supplicant_start = lambda: self._systemd_manager.is_active("wpa_supplicant.service")
-        self._hostapd_start = lambda: self._systemd_manager.is_active("hostapd.service")
-        self._wifi_on = lambda: (self._wpa_supplicant_start or self._hostapd_start)
+        self._wpa_supplicant_start = lambda self: self._systemd_manager.is_active("wpa_supplicant.service")
+        self._hostapd_start = lambda self: self._systemd_manager.is_active("hostapd.service")
+        self._wifi_on = lambda self: (self._wpa_supplicant_start or self._hostapd_start)
 
         if self._wpa_supplicant_start:
             self._wpa_supplicant_interface.initialize()
