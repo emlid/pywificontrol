@@ -19,40 +19,40 @@ class WpaTemplates(object):
 
     def __iter__(self):
         if (self.security == 'open'):
-            yield "ssid", "\"{}\"".format(self.name)
+            yield "ssid", "{}".format(self.name)
             yield "key_mgmt", "NONE"
         elif (self.security == 'wep'):
-            yield "ssid", "\"{}\"".format(self.name)
+            yield "ssid", "{}".format(self.name)
             yield "key_mgmt", "NONE"
             yield "group", "WEP104 WEP40"
-            yield "wep_key0", "\"{}\"".format(self.password)
+            yield "wep_key0", "{}".format(self.password)
         elif (self.security == 'wpapsk'):
-            yield "ssid", "\"{}\"".format(self.name)
+            yield "ssid", "{}".format(self.name)
             yield "key_mgmt", "WPA-PSK"
             yield "pairwise", "CCMP TKIP"
             yield "group", "CCMP TKIP"
             yield "eap", "TTLS PEAP TLS"
-            yield "psk", "\"{}\"".format(self.password)
+            yield "psk", "{}".format(self.password)
         elif (self.security == 'wpa2psk'):
-            yield "ssid", "\"{}\"".format(self.name)
+            yield "ssid", "{}".format(self.name)
             yield "proto", "RSN"
             yield "key_mgmt", "WPA-PSK"
             yield "pairwise", "CCMP TKIP"
             yield "group", "CCMP TKIP"
             yield "eap", "TTLS PEAP TLS"
-            yield "psk", "\"{}\"".format(self.password)
+            yield "psk", "{}".format(self.password)
         elif (self.security == 'wpaeap'):
-            yield "ssid", "\"{}\"".format(self.name)
+            yield "ssid", "{}".format(self.name)
             yield "key_mgmt", "WPA-EAP"
             yield "pairwise", "CCMP TKIP"
             yield "group", "CCMP TKIP"
             yield "eap", "TTLS PEAP TLS"
-            yield "identity", "\"{}\"".format(self.identity)
-            yield "password", "\"{}\"".format(self.password)
+            yield "identity", "{}".format(self.identity)
+            yield "password", "{}".format(self.password)
             yield "phase1", "peaplable=0"
         else:
-            yield "ssid", "\"{}\"".format(self.name)
-            yield "psk", "\"{}\"".format(self.password)
+            yield "ssid", "{}".format(self.name)
+            yield "psk", "{}".format(self.password)
 
 class WpaSupplicantDBus(object):
 
@@ -176,7 +176,10 @@ class WpaSupplicantInterface(WpaSupplicantDBus):
         try:
             interface.Reassociate()
         except dbus.exceptions.DBusException as error:
-            raise ServiceError(error)
+            if ("fi.w1.wpa_supplicant1.NotConnected" in str(error)):
+                pass
+            else:
+                raise ServiceError(error)
         
     def reconnect(self):
         interface = self.__get_interface()

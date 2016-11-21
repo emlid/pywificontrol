@@ -3,9 +3,11 @@ class FileError(Exception):
 
 class NetworkTemplate(object):
 
+    _strings = ('ssid', 'psk', 'identity', 'wep_key0', 'password')
     network_template = 'network={{\n{}\n}}\n'
     string_template = '\t{}=\"{}\"'
     variant_template = '\t{}={}'
+
 
     def __init__(self, network_parameters):
         self.network_parameters = network_parameters
@@ -13,7 +15,7 @@ class NetworkTemplate(object):
     def __str__(self):
         network_parameters = list()
         for key, value in self.network_parameters.items():
-            if key in ('ssid', 'psk', 'identity'):
+            if key in self._strings:
                 network_parameters.append(self.string_template.format(key, value))
             else:
                 network_parameters.append(self.variant_template.format(key, value))

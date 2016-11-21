@@ -66,7 +66,7 @@ class WiFiControl(object):
 
         self._systemd_manager = SystemdManager()
         self._wpa_supplicant_interface = WpaSupplicantInterface(self.interface)
-        self._wpa_network_manage = WpaSupplicantNetwork()
+        self._wpa_network_manager = WpaSupplicantNetwork()
         try:
             self._config_updater = ConfigurationFileUpdater(self.wpa_supplicant_path)
         except FileError:
@@ -78,22 +78,25 @@ class WiFiControl(object):
         self._connection_event = Event()
         self._network_list = None
         
-        self._wpa_supplicant_start = lambda self: self._systemd_manager.is_active("wpa_supplicant.service")
-        self._hostapd_start = lambda self: self._systemd_manager.is_active("hostapd.service")
-        self._wifi_on = lambda self: (self._wpa_supplicant_start or self._hostapd_start)
+        self._wpa_supplicant_start = lambda: self._systemd_manager.is_active("wpa_supplicant.service")
+        self._hostapd_start = lambda: self._systemd_manager.is_active("hostapd.service")
+        self._wifi_on = lambda: (self._wpa_supplicant_start() or self._hostapd_start())
 
-        if self._wpa_supplicant_start:
+        if self._wpa_supplicant_start():
             self._wpa_supplicant_interface.initialize()
 
     def start_host_mode(self):
-        self._launch(self._wpas_control("stop"))
-        self._launch(self._hostapd_control("start"))
+        if not self._hostapd_start():
+            self._launch(self._wpas_control("stop"))
+            self._launch(self._hostapd_control("start"))
+        return True
 
     def start_client_mode(self):
-        self._launch(self._hostapd_control("stop"))
-        self._launch(self._wpas_control("start"))
-        self._wpa_supplicant_interface.initialize()
-        self._wpa_supplicant_interface.reconnect()
+        if not self._wpa_supplicant_start():
+            self._launch(self._hostapd_control("stop"))
+            self._launch(self._wpas_control("start"))
+            self._wpa_supplicant_interface.initialize()
+        return True
         
     def turn_on_wifi(self):
         self._launch(self._rfkill_wifi_control("unblock"))
@@ -105,7 +108,7 @@ class WiFiControl(object):
         self._launch(self._rfkill_wifi_control("block"))
 
     def get_wifi_turned_on(self):
-        return self._wifi_on
+        return self._wifi_on()
 
     def get_hostap_name(self):
         try:
@@ -162,7 +165,7 @@ class WiFiControl(object):
         except AttributeError:
             pass
         else:
-            if self._wpa_supplicant_start:
+            if self._wpa_supplicant_start():
                 self._wpa_supplicant_interface.addNetwork(network)
 
     def remove_network(self, network):
@@ -171,19 +174,19 @@ class WiFiControl(object):
         except AttributeError:
             pass
         else:
-            if self._wpa_supplicant_start:
-                self._wpa_network_manage.removeNetwork(self._find_remove_network_path(network))
+            if self._wpa_supplicant_start():
+                self._wpa_supplicant_interface.removeNetwork(self._find_network_path(network))
 
     def start_connecting(self, network, callback=None,
                          args=None, timeout=10, any_network=False):
         self._break_connecting()
         self.start_client_mode()
         self._choose_thread(network, callback, args, any_network)
-        self.__start_connecting_thread(timeout)
+        self._start_connecting_thread(timeout)
 
     def connect(self, network, callback=None, any_network=False, args=None):
         
-        result = self._connect_to_network(network)
+        result = self._connect_to_network(network, any_network)
         self._teardown_connection()
         if callback is not None:
             if args is not None:
@@ -251,15 +254,14 @@ class WiFiControl(object):
             return None
     
     # Network actions
-    def _find_remove_network_path(self, aim_network):
+    def _find_network_path(self, aim_network):
         for network in self._wpa_supplicant_interface.getNetworks():
-            if self.self._wpa_network_manage.getNetworkSSID(network) == aim_network['ssid']:
+            if self._wpa_network_manager.getNetworkSSID(network) == aim_network['ssid']:
                 return network
 
     def _get_current_network_ssid(self):
         network = self._wpa_supplicant_interface.getCurrentNetwork()
-        return self._wpa_network_manage.getNetworkSSID(network)
-
+        return self._wpa_network_manager.getNetworkSSID(network)
 
     # Device state information
     def _get_device_ip(self):
@@ -273,27 +275,27 @@ class WiFiControl(object):
         return re.search(mac_pattern, data).group(0)
 
     def _get_state(self):
-        if self._wpa_supplicant_start:
+        if self._wpa_supplicant_start():
             return "wpa_supplicant"
-        if self._hostapd_start:
+        if self._hostapd_start():
             return "hostapd"
         return "wifi_off"
 
     # Connection actions
-    def _check_correct_connection(self, any_network_flag):
-        if any_network_flag:
+    def _check_correct_connection(self, aim_network, any_network_flag):
+        if not any_network_flag:
             if self._get_current_network_ssid() != aim_network['ssid']:
                 return False
         return True
 
     def _start_network_connection(self, network, any_network_flag):
-        if not any_network:
-            self._wpa_supplicant_interface.selectNetwork(network)
+        if not any_network_flag:
+            self._wpa_supplicant_interface.selectNetwork(self._find_network_path(network))
         else:
             self._wpa_supplicant_interface.reassociate()
 
     def _connect_to_network(self, network, any_network_flag):
-        self._start_network_connection()
+        self._start_network_connection(network, any_network_flag)
         try:
             self._wait_untill_connection_complete()
         except ConnectionError:
@@ -307,9 +309,9 @@ class WiFiControl(object):
                 args=(network, callback, any_network, args))
         else:
             self._connection_thread = Thread(target=self.connect, 
-                args=(network, self._revert_on_connect_failure, any_network, network_state))
+                args=(network, self._revert_on_connect_failure, any_network, None))
 
-    def _start_connecting_thread(self):
+    def _start_connecting_thread(self, timeout):
         self._connection_timer = Timer(timeout, self.stop_connecting)
         self._connection_event.set()
         self._connection_thread.start()
@@ -344,9 +346,8 @@ class WiFiControl(object):
             if not self._connection_event.is_set():
                 raise ConnectionError
 
-
     # Callback
-    def _revert_on_connect_failure(self, result, network_state):
+    def _revert_on_connect_failure(self, result):
         if not result:
             self.start_host_mode()
 
