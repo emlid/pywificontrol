@@ -315,9 +315,8 @@ class WiFiControl(object):
     # Subprocess
     def _launch(self, args):
         try:
-            out_return = subprocess.check_output(
-                args, stderr=subprocess.PIPE, shell=True)
-            return out_return
+            return subprocess.check_output(args, stderr=subprocess.PIPE, shell=True)
+        
         except subprocess.CalledProcessError as error:
             print("WiFiControl: subprocess call error")
             print("Return code: {}".format(error.returncode))
