@@ -22,6 +22,7 @@
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
+import sys
 import subprocess
 from sysdmanager import SystemdManager
 from threading import Thread, Event, Timer
@@ -316,11 +317,10 @@ class WiFiControl(object):
     def _launch(self, args):
         try:
             return subprocess.check_output(args, stderr=subprocess.PIPE, shell=True)
-        
         except subprocess.CalledProcessError as error:
-            print("WiFiControl: subprocess call error")
-            print("Return code: {}".format(error.returncode))
-            print("Command: {}".format(args))
+            sys.stderr.write("WiFiControl: subprocess call error")
+            sys.stderr.write("Return code: {}".format(error.returncode))
+            sys.stderr.write("Command: {}".format(args))
 
 if __name__ == '__main__':
     wifi = WiFiControl('wlp6s0')
