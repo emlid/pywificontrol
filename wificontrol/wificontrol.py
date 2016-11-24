@@ -26,7 +26,8 @@ import subprocess
 from sysdmanager import SystemdManager
 from threading import Thread, Event, Timer
 from utils import ConfigurationFileUpdater, NullFileUpdater
-from utils import WpaSupplicantInterface, WpaSupplicantNetwork, WpaTemplates
+from utils import WpaSupplicantInterface, WpaSupplicantNetwork
+from utils import ConvertToWpasNetwork, ConvertToWifiControlNetwork
 from utils import FileError
 from utils import ServiceError, InterfaceError, PropertyError
 
@@ -156,10 +157,10 @@ class WiFiControl(object):
             return network_state
 
     def get_added_networks(self):
-        return self._config_updater.networks
+        return [dict(ConvertToWifiControlNetwork(network)) for network in self._config_updater.networks]
 
     def add_network(self, network_parameters):
-        network = dict(WpaTemplates(network_parameters))
+        network = dict(ConvertToWpasNetwork(network_parameters))
         try:
             self._config_updater.addNetwork(network)
         except AttributeError:
