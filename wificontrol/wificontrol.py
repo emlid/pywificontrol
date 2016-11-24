@@ -43,7 +43,7 @@ class WiFiControl(object):
     }
     _wpas_control = lambda self, action: "systemctl {} wpa_supplicant.service && sleep 2".format(action)
     _hostapd_control = lambda self, action: "systemctl {} hostapd.service && sleep 2".format(action)
-    _launch_restart_mdns = "systemctl restart mdns.service && sleep 2"
+    _restart_mdns = "systemctl restart mdns.service && sleep 2"
     _rfkill_wifi_control = lambda self, action: "rfkill {} wifi".format(action)
 
     def __init__(self, interface='wlan0'):
@@ -57,13 +57,10 @@ class WiFiControl(object):
             self._launch("wpa_supplicant")
         except OSError:
             raise OSError('No WPA_SUPPLICANT servise')
-        except subprocess.CalledProcessError:
-            try:
-                self._launch("hostapd")
-            except OSError:
-                raise OSError('No HOSTAPD servise')
-            except subprocess.CalledProcessError:
-                pass
+        try:
+            self._launch("hostapd")
+        except OSError:
+            raise OSError('No HOSTAPD servise')
 
         self._systemd_manager = SystemdManager()
         self._wpa_supplicant_interface = WpaSupplicantInterface(self.interface)
@@ -112,22 +109,11 @@ class WiFiControl(object):
         return self._wifi_on()
 
     def get_hostap_name(self):
-        try:
-            return self._launch(
-                "grep \'^ssid=\' {}".format(
-                    self.hostapd_path))[5:-1]
-        except subprocess.CalledProcessError:
-            return None
+        return self._launch("grep \'^ssid=\' {}".format(self.hostapd_path))[5:-1]
 
     def set_hostap_password(self, password):
-        try:
-            self._launch(
-                "sed -i s/^wpa_passphrase=.*/wpa_passphrase={}/ {}".format(
-                    password, self.hostapd_path))
-        except subprocess.CalledProcessError:
-            return False
-        else:
-            return True
+        self._launch("sed -i s/^wpa_passphrase=.*/wpa_passphrase={}/ {}".format(password, self.hostapd_path))
+
 
     def get_device_name(self):
         return self._get_host_name()
@@ -136,12 +122,7 @@ class WiFiControl(object):
         self._set_hostap_name(name)
         self._set_p2p_name(name)
         self._set_host_name(name)
-        try:
-            self._launch(self._launch_restart_mdns)
-        except subprocess.CalledProcessError:
-            return False
-        else:
-            return True
+        self._launch(self._restart_mdns)
 
     def get_status(self):
         network_params = dict()
@@ -205,54 +186,27 @@ class WiFiControl(object):
     ### Protected methods 
     # Names changung actions
     def _set_hostap_name(self, name='reach'):
-        try:
-            mac_addr = self._get_device_mac()[-6:]
-            self._launch(
-                "sed -i s/^ssid=.*/ssid={}{}/ {}".format(name, mac_addr,
-                                                         self.hostapd_path))
-        except subprocess.CalledProcessError:
-            return False
-        else:
-            return True
+        mac_addr = self._get_device_mac()[-6:]
+        self._launch("sed -i s/^ssid=.*/ssid={}{}/ {}".format(name, mac_addr, self.hostapd_path))
 
     def _set_host_name(self, name='reach'):
         try:
             hostname_file = open(self.hostname_path, 'w')
         except IOError:
-            return False
+            pass
         else:
             hostname_file.write(name + '\n')
             hostname_file.close()
-            try:
-                self._launch('hostname -F {}'.format(self.hostname_path))
-            except subprocess.CalledProcessError:
-                return False
-            else:
-                return True
+            self._launch('hostname -F {}'.format(self.hostname_path))
 
     def _get_host_name(self):
-        try:
-            return self._launch("cat {}".format(self.hostname_path)).strip()
-        except subprocess.CalledProcessError:
-            return None
+        return self._launch("cat {}".format(self.hostname_path)).strip()
 
     def _set_p2p_name(self, name='reach'):
-        try:
-            self._launch(
-                "sed -i s/^p2p_ssid_postfix=.*/p2p_ssid_postfix={}/ {}".format(
-                    name, self.p2p_supplicant_path))
-        except subprocess.CalledProcessError:
-            return False
-        else:
-            return True
+        self._launch("sed -i s/^p2p_ssid_postfix=.*/p2p_ssid_postfix={}/ {}".format(name, self.p2p_supplicant_path))
 
     def _get_p2p_name(self):
-        try:
-            return self._launch(
-                "grep \'^p2p_ssid_postfix=\' {}".format(
-                    self.p2p_supplicant_path))[17:-1]
-        except subprocess.CalledProcessError:
-            return None
+        return self._launch("grep \'^p2p_ssid_postfix=\' {}".format(self.p2p_supplicant_path))[17:-1]
     
     # Network actions
     def _find_network_path(self, aim_network):
@@ -268,12 +222,18 @@ class WiFiControl(object):
     def _get_device_ip(self):
         ip_pattern = "[0-9]+.[0-9]+.[0-9]+.[0-9]+"
         data = self._launch("ifconfig {}".format(self.interface))
-        return re.search("inet addr:{}".format(ip_pattern), data).group(0)[10:]
+        try:
+            return re.search("inet addr:{}".format(ip_pattern), data).group(0)[10:]
+        except TypeError:
+            return None
 
     def _get_device_mac(self):
         mac_pattern = "..:..:..:..:..:.."
         data = self._launch("ifconfig {}".format(self.interface))
-        return re.search(mac_pattern, data).group(0)
+        try:
+            return re.search(mac_pattern, data).group(0)
+        except TypeError:
+            return None
 
     def _get_state(self):
         if self._wpa_supplicant_start():
@@ -354,9 +314,14 @@ class WiFiControl(object):
 
     # Subprocess
     def _launch(self, args):
-        out_return = subprocess.check_output(
-            args, stderr=subprocess.PIPE, shell=True)
-        return out_return
+        try:
+            out_return = subprocess.check_output(
+                args, stderr=subprocess.PIPE, shell=True)
+            return out_return
+        except subprocess.CalledProcessError as error:
+            print("WiFiControl: subprocess call error")
+            print("Return code: {}".format(error.returncode))
+            print("Command: {}".format(args))
 
 if __name__ == '__main__':
     wifi = WiFiControl('wlp6s0')
