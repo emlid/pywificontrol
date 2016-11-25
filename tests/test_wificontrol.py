@@ -44,8 +44,8 @@ class WiFiControlTest(unittest.TestCase):
         if not result:
             print("Cant connect to network")
             print("Starting hostapd")
-            self.connection_result = -1
             self.wifi.start_host_mode()
+            self.connection_result = -1
 
     def setUp(self):
         self.connection_result = 0
@@ -108,7 +108,7 @@ class WiFiControlTest(unittest.TestCase):
             'identity': "ivan@example.com"
         }
         self.wifi.add_network(test_network)
-        self.wifi.start_connecting(test_network, callback=self.print_callback)
+        self.wifi.start_connecting(test_network, timeout=15, callback=self.print_callback)
         while(self.connection_result == 0):
             pass
         self.assertTrue(self.connection_result == -1)
@@ -125,12 +125,11 @@ class WiFiControlTest(unittest.TestCase):
             'identity': ""
         }
         self.wifi.add_network(test_network)
-        self.wifi.start_connecting(test_network, callback=self.print_callback)
+        self.wifi.start_connecting(test_network, timeout=15, callback=self.print_callback)
         while(self.connection_result == 0):
             pass
         self.assertTrue(self.connection_result == 1)
-        self.connection_result = 0
-        self.assertTrue(self.get_status()[1]['ssid']==test_network['ssid'])
+        self.assertTrue(self.wifi.get_status()[1]['ssid']==test_network['ssid'])
     
     @unittest.skipIf("edison" not in platform.platform(), 
         "Not suppoted in this platform")
@@ -142,18 +141,18 @@ class WiFiControlTest(unittest.TestCase):
             'identity': "ivan@example.com"
         }
         self.wifi.add_network(test_network)
-        self.wifi.start_connecting(test_network, callback=self.print_callback)
+        self.wifi.start_connecting(test_network, timeout=15, callback=self.hostapd_callback)
         while(self.connection_result == 0):
             pass
         self.assertTrue(self.connection_result == -1)
-        self.connection_result = 0
+        self.assertTrue(self.wifi._hostapd_start())
         self.wifi.remove_network(test_network)
-        self.assertTrue(self._hostapd_start())
 
     @unittest.skipIf("edison" not in platform.platform(), 
         "Not suppoted in this platform")
     def test_08_connect_to_reachable_network_from_hostap(self):
-        self.assertTrue(self._hostapd_start())
+        self.wifi.start_host_mode()
+        self.assertTrue(self.wifi._hostapd_start())
         test_network = {
             'ssid': "EML33T5",
             'password': "emrooftop",
@@ -161,9 +160,25 @@ class WiFiControlTest(unittest.TestCase):
             'identity': ""
         }
         self.wifi.add_network(test_network)
-        self.wifi.start_connecting(test_network, callback=self.print_callback)
+        self.wifi.start_connecting(test_network, timeout=15, callback=self.print_callback)
         while(self.connection_result == 0):
             pass
         self.assertTrue(self.connection_result == 1)
-        self.connection_result = 0
-        self.assertTrue(self.get_status()[1]['ssid']==test_network['ssid'])
+        self.assertTrue(self.wifi.get_status()[1]['ssid']==test_network['ssid'])
+
+    def test_09_change_names(self):
+        old_name = self.wifi.get_device_name()
+        new_name = "TestCaseName"
+        mac_end = self.wifi._get_device_mac()[-6:]
+        self.wifi.set_device_names(new_name)
+
+        changed_host_name = self.wifi.get_hostap_name()
+        changed_device_name = self.wifi.get_device_name()
+        self.assertTrue(changed_device_name == new_name)
+        self.assertTrue(changed_host_name == new_name+mac_end)
+        self.wifi.set_device_names(old_name)
+
+        rechanged_host_name = self.wifi.get_hostap_name()
+        rechanged_device_name = self.wifi.get_device_name()
+        self.assertTrue(rechanged_device_name == old_name)
+        self.assertTrue(rechanged_host_name == old_name+mac_end)
