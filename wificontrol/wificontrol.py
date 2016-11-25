@@ -21,8 +21,7 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
-import re
-import sys
+import re, os
 import subprocess
 from sysdmanager import SystemdManager
 from threading import Thread, Event, Timer
@@ -33,6 +32,9 @@ from utils import FileError
 from utils import ServiceError, InterfaceError, PropertyError
 
 class ConnectionError(Exception):
+    pass
+
+class WiFiControlError(Exception):
     pass
 
 class WiFiControl(object):
@@ -54,13 +56,9 @@ class WiFiControl(object):
         self.hostname_path = self._default_path['hostname_path']
         self.interface = interface
 
-        try:
-            self._launch("wpa_supplicant")
-        except OSError:
+        if ("bin/wpa_supplicant" not in self._launch("whereis wpa_supplicant")):
             raise OSError('No WPA_SUPPLICANT servise')
-        try:
-            self._launch("hostapd")
-        except OSError:
+        if ("bin/hostapd" not in self._launch("whereis hostapd")):
             raise OSError('No HOSTAPD servise')
 
         self._systemd_manager = SystemdManager()
@@ -318,9 +316,10 @@ class WiFiControl(object):
         try:
             return subprocess.check_output(args, stderr=subprocess.PIPE, shell=True)
         except subprocess.CalledProcessError as error:
-            sys.stderr.write("WiFiControl: subprocess call error")
-            sys.stderr.write("Return code: {}".format(error.returncode))
-            sys.stderr.write("Command: {}".format(args))
+            error_message = "WiFiControl: subprocess call error\n"
+            error_message += "Return code: {}".format(error.returncode)
+            error_message += "Command: {}".format(args)
+            raise WiFiControlError(error_message)
 
 if __name__ == '__main__':
     wifi = WiFiControl('wlp6s0')
