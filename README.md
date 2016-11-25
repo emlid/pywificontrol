@@ -74,5 +74,5 @@ Network with WPA Enterprise security protocol has additional field 'identity'
  
 #Exceptions
 
-If you don't have hostapd or wpa_supplicant package, `__init__` function raise `OSError` exception. 
-
+If you don't have hostapd or wpa_supplicant package, `__init__` function raise `OSError` exception.  
+WiFiControl raise WiFiControlError on failure.

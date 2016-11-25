@@ -317,7 +317,7 @@ class WiFiControl(object):
             return subprocess.check_output(args, stderr=subprocess.PIPE, shell=True)
         except subprocess.CalledProcessError as error:
             error_message = "WiFiControl: subprocess call error\n"
-            error_message += "Return code: {}".format(error.returncode)
+            error_message += "Return code: {}\n".format(error.returncode)
             error_message += "Command: {}".format(args)
             raise WiFiControlError(error_message)
 
