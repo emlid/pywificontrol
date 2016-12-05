@@ -1,4 +1,4 @@
-class ConvertToWpasNetwork(object):
+class WpasNetworkConverter(object):
     def __init__(self, network_dict):
 
         self.security = network_dict.get('security')
@@ -43,7 +43,7 @@ class ConvertToWpasNetwork(object):
             yield "ssid", "{}".format(self.name)
             yield "psk", "{}".format(self.password)
 
-class ConvertToWifiControlNetwork(object):
+class WifiControlNetworkConverter(object):
     def __init__(self, network_dict):
 
         self.name = network_dict.get('ssid')
@@ -76,8 +76,14 @@ class ConvertToWifiControlNetwork(object):
             yield "ssid", self.name
             yield "security", "base"
 
+def ConvertToWpasNetwork(network):
+    return dict(WpasNetworkConverter(network))
+
+def ConvertToWifiControlNetwork(network):
+    return dict(WifiControlNetworkConverter(network))
+
 if __name__ == '__main__':
     network = {'ssid': "MySSID", 'password': "NewPassword", 'security': "wpaeap", 'identity': "alex@example.com"}
-    conv = dict(ConvertToWpasNetwork(network))
-    reconv = dict(ConvertToWifiControlNetwork(conv))
+    conv = ConvertToWpasNetwork(network)
+    reconv = ConvertToWifiControlNetwork(conv)
     print(conv, reconv)
