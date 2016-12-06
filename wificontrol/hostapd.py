@@ -26,10 +26,13 @@ from wificommon import WiFi
 class HostAP(WiFi):
     hostapd_control = lambda self, action: "systemctl {} hostapd.service && sleep 2".format(action)
 
-    def __init__(self):
-        super(HostAP, self).__init__()
-        self.hostapd_path = "/etc/hostapd/hostapd.conf",
-        self.hostname_path = '/etc/hostname'
+    def __init__(self, interface,
+        hostapd_config="/etc/hostapd/hostapd.conf", 
+        hostname_config='/etc/hostname'):
+        
+        super(HostAP, self).__init__(interface)
+        self.hostapd_path = hostapd_config
+        self.hostname_path = hostname_config
 
         if ("bin/hostapd" not in self.execute_command("whereis hostapd")):
             raise OSError('No HOSTAPD servise')
@@ -37,10 +40,14 @@ class HostAP(WiFi):
         self.started = lambda: self.sysdmanager.is_active("hostapd.service")
 
     def start(self):
-        self.execute_command(self._hostapd_control("start"))
+        self.execute_command(self.hostapd_control("start"))
 
     def stop(self):
-        self.execute_command(self._hostapd_control("stop"))
+        self.execute_command(self.hostapd_control("stop"))
+
+    def set_hostap_name(self, name='reach'):
+        mac_addr = self.get_device_mac()[-6:]
+        self.execute_command("sed -i s/^ssid=.*/ssid={}{}/ {}".format(name, mac_addr, self.hostapd_path))
 
     def get_hostap_name(self):
         return self.execute_command("grep \'^ssid=\' {}".format(self.hostapd_path))[5:-1]
@@ -48,30 +55,18 @@ class HostAP(WiFi):
     def set_hostap_password(self, password):
         self.execute_command("sed -i s/^wpa_passphrase=.*/wpa_passphrase={}/ {}".format(password, self.hostapd_path))
 
-    def set_hostap_name(self, name='reach'):
-        mac_addr = self.get_device_mac()[-6:]
-        self.execute_command("sed -i s/^ssid=.*/ssid={}{}/ {}".format(name, mac_addr, self.hostapd_path))
-
     def set_host_name(self, name='reach'):
         try:
-            hostname_file = open(self.hostname_path, 'w')
+            with open(self.hostname_path, 'w') as hostname_file:
+                hostname_file.write(name + '\n')
         except IOError:
             pass
         else:
-            hostname_file.write(name + '\n')
-            hostname_file.close()
             self.execute_command('hostname -F {}'.format(self.hostname_path))
+
 
     def get_host_name(self):
         return self.execute_command("cat {}".format(self.hostname_path)).strip()
-
-    def get_device_mac(self):
-        mac_pattern = "..:..:..:..:..:.."
-        data = self.execute_command("ifconfig {}".format(self.interface))
-        try:
-            return re.search(mac_pattern, data).group(0)
-        except TypeError:
-            return None
 
 if __name__ == '__main__':
     hotspot = HostAP()

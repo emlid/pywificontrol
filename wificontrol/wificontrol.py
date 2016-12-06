@@ -29,11 +29,9 @@ class WiFiControl(object):
 
     def __init__(self, interface='wlan0'):
         
-        self.wifi = WiFi()
+        self.wifi = WiFi(interface)
         self.wpas = WpaSupplicant(interface)
-        self.hotspot = HostAP()
-
-        self.wifi_on = lambda: (self.wpas.started() or self.hotspot.started())
+        self.hotspot = HostAP(interface)
 
     def start_host_mode(self):
         if not self.hotspot.started():
@@ -42,8 +40,8 @@ class WiFiControl(object):
 
     def start_client_mode(self):
         if not self.wpas.started():
-            self.wpas.start()
             self.hotspot.stop()
+            self.wpas.start()
 
     def turn_on_wifi(self):
         self.wifi.unblock() 
@@ -55,7 +53,7 @@ class WiFiControl(object):
         self.wifi.block()
 
     def get_wifi_turned_on(self):
-        return self.wifi_on()
+        return (self.wpas.started() or self.hotspot.started())
 
     def set_hostap_password(self, password):
         self.hotspot.set_hostap_password(password)
@@ -70,7 +68,7 @@ class WiFiControl(object):
         self.wpas.set_p2p_name(name)
         self.hotspot.set_hostap_name(name)
         self.hotspot.set_host_name(name)
-        self.wifi.restart_mdns()
+        self.wifi.restart_dns()
 
     def get_status(self):
         return (self.get_state(), self.wpas.get_status())
@@ -79,7 +77,7 @@ class WiFiControl(object):
         return self.wpas.get_added_networks()
 
     def add_network(self, network_parameters):
-        self.wpas.add_network(network)
+        self.wpas.add_network(network_parameters)
 
     def remove_network(self, network):
         self.wpas.remove_network(network)
@@ -88,6 +86,7 @@ class WiFiControl(object):
         if callback is None:
             callback = self.revert_on_connect_failure
             args = None
+        self.start_client_mode()
         self.wpas.start_connecting(network, callback, args, timeout)
 
     def stop_connecting(self):

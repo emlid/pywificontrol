@@ -21,7 +21,6 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
-import re
 from wificommon import WiFi
 from threading import Thread, Event, Timer
 from utils import ConfigurationFileUpdater, NullFileUpdater
@@ -33,11 +32,13 @@ from utils import ServiceError, InterfaceError, PropertyError
 class WpaSupplicant(WiFi):
     wpas_control = lambda self, action: "systemctl {} wpa_supplicant.service && sleep 2".format(action)
 
-    def __init__(self, interface):
-        super(WpaSupplicant, self).__init__()
-        self.wpa_supplicant_path = "/etc/wpa_supplicant/wpa_supplicant.conf"
-        self.p2p_supplicant_path = "/etc/wpa_supplicant/p2p_supplicant.conf"
-        self.interface = interface
+    def __init__(self, interface, 
+        wpas_config="/etc/wpa_supplicant/wpa_supplicant.conf",
+        p2p_config="/etc/wpa_supplicant/p2p_supplicant.conf"):
+        
+        super(WpaSupplicant, self).__init__(interface)
+        self.wpa_supplicant_path = wpas_config
+        self.p2p_supplicant_path = p2p_config
 
         if ("bin/wpa_supplicant" not in self.execute_command("whereis wpa_supplicant")):
             raise OSError('No WPA_SUPPLICANT servise')
@@ -104,7 +105,6 @@ class WpaSupplicant(WiFi):
     def start_connecting(self, network, callback=None,
                          args=None, timeout=10):
         self.break_connecting()
-        self.start_client_mode()
         self.connection_thread = Thread(target=self.connect, args=(network, callback, args))
         self.start_connecting_thread(timeout)
 
@@ -143,23 +143,6 @@ class WpaSupplicant(WiFi):
     def get_current_network_ssid(self):
         network = self.wpa_supplicant_interface.getCurrentNetwork()
         return self.wpa_network_manager.getNetworkSSID(network)
-
-    # Device state information
-    def get_device_ip(self):
-        ip_pattern = "[0-9]+.[0-9]+.[0-9]+.[0-9]+"
-        data = self.execute_command("ifconfig {}".format(self.interface))
-        try:
-            return re.search("inet addr:{}".format(ip_pattern), data).group(0)[10:]
-        except TypeError:
-            return None
-
-    def get_device_mac(self):
-        mac_pattern = "..:..:..:..:..:.."
-        data = self.execute_command("ifconfig {}".format(self.interface))
-        try:
-            return re.search(mac_pattern, data).group(0)
-        except TypeError:
-            return None
 
     # Connection actions
     def start_network_connection(self, network):
@@ -220,4 +203,4 @@ class WpaSupplicant(WiFi):
 
 if __name__ == '__main__':
     wifi = WpaSupplicant('wlp6s0')
-    print(get_status())
+    print(wifi.get_status())
