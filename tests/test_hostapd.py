@@ -3,23 +3,18 @@ import unittest
 import platform
 import subprocess
 from random import randint
-from configs import hotspot, wificontrol
-
-def stop_wpasupplicant_service():
-    subprocess.call("systemctl stop wpa_supplicant.service", shell=True)
+from fakewifi import fakeHostAP as HostAP
 
 class HostAPTest(unittest.TestCase):
 
     def setUp(self):
-        stop_wpasupplicant_service()
-        self.connection_result = 0
         if "Ubuntu" in platform.platform():
             cur_path = os.getcwd()
             hostapd_path = cur_path + "/tests/test_files/hostapd.conf"
             hostname_path = cur_path + "/tests/test_files/hostname"
-            self.hotspot = hotspot.HostAP('wlp6s0', hostapd_path, hostname_path)
+            self.hotspot = HostAP('wlp6s0', hostapd_path, hostname_path)
         else:
-            self.hotspot = hotspot.HostAP('wlan0')
+            self.hotspot = HostAP('wlan0')
 
     def tearDown(self):
         pass
@@ -32,11 +27,7 @@ class HostAPTest(unittest.TestCase):
 
     def test_set_host_name(self):
         new_name = "testname_{}".format(randint(0,1000))
-        if "Ubuntu" in platform.platform():
-            with self.assertRaises(wificontrol.WiFiControlError):
-                self.hotspot.set_host_name(new_name)
-        else:
-            self.hotspot.set_host_name(new_name)
+        self.hotspot.set_host_name(new_name)
         self.assertEqual(self.hotspot.get_host_name(), new_name)
 
     def test_start_hotspot(self):

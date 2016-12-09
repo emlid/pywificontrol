@@ -3,16 +3,13 @@ import unittest
 import platform
 import subprocess
 from random import randint
-from configs import wpas 
+from fakewifi import fakeWpaSupplicant as WpaSupplicant 
 
 class ValidationError(Exception):
     pass
 
 def execute_command(command):
    return subprocess.check_output(command, stderr=subprocess.PIPE, shell=True)
-
-def stop_hostapd_service():
-    execute_command("systemctl stop hostapd.service")
 
 def check_number_of_networks(file, file_network_count, service_network_count):
     file_counter = int(execute_command("grep -c \"network={{\" {}".format(file)).strip())
@@ -22,7 +19,6 @@ def check_number_of_networks(file, file_network_count, service_network_count):
     if (file_network_count != file_counter or
         service_network_count != service_counter):
         raise ValidationError()
-
 
 class WpaSupplicantTest(unittest.TestCase):
 
@@ -46,23 +42,21 @@ class WpaSupplicantTest(unittest.TestCase):
             self.connection_result = 1
 
     def setUp(self):
-        stop_hostapd_service()
         self.connection_result = 0
         if "Ubuntu" in platform.platform():
             cur_path = os.getcwd()
             wpas_config = cur_path + "/tests/test_files/wpa_supplicant.conf"
             p2p_config = cur_path + "/tests/test_files/p2p_supplicant.conf"
-            self.wifi = wpas.WpaSupplicant('wlp6s0', wpas_config, p2p_config)
+            self.wifi = WpaSupplicant('wlp6s0', wpas_config, p2p_config)
         else:
-            self.wifi = wpas.WpaSupplicant('wlan0')
-        self.wifi.start()
+            self.wifi = WpaSupplicant('wlan0')
 
     def tearDown(self):
-        self.wifi.start()
+        pass
 
     def test_add_networks(self):
         test_network = {'ssid': "ssid", 'password': "password", 'security': "wpa2psk", 'identity': "ivan@example.com"}
-        for index in range(0, 100):
+        for index in range(0, 10):
             print(index)
             test_network['ssid'] = "ssid{}".format(index)
             print("network to add: {}".format(test_network))
@@ -71,7 +65,7 @@ class WpaSupplicantTest(unittest.TestCase):
 
     def test_remove_networks(self):
         test_network = {'ssid': "ssid", 'password': "password", 'security': "wpa2psk", 'identity': "ivan@example.com"}
-        for index in range(0, 100):
+        for index in range(0, 10):
             print(index)
             test_network['ssid'] = "ssid{}".format(index)
             print("network to remove: {}".format(test_network))

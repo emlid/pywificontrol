@@ -2,7 +2,7 @@ import os
 import unittest
 import platform
 import subprocess
-import wificontrol
+from fakewifi import fakeWiFiControl as WiFiControl
 
 class WiFiControlTest(unittest.TestCase):
 
@@ -19,7 +19,7 @@ class WiFiControlTest(unittest.TestCase):
 
     def setUp(self):
         self.connection_result = 0
-        self.manager = wificontrol.WiFiControl()
+        self.manager = WiFiControl()
 
     def tearDown(self):
         pass
