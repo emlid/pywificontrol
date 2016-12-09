@@ -35,11 +35,11 @@ class NullFileUpdater(object):
         pass
 
 class ConfigurationFileUpdater(object):
-    
+
     __config_file_path = "/etc/wpa_supplicant/wpa_supplicant.conf"
 
     def __init__(self, config_file_path=None):
-        
+
         self.head = None
         self.networks = list()
         self.raw_file = None
@@ -56,6 +56,7 @@ class ConfigurationFileUpdater(object):
         else:
             self.raw_file = config_file.read()
             self.__parse_file()
+            config_file.close()
 
     def __parse_file(self):
         self.head = self.__get_header()
@@ -65,7 +66,7 @@ class ConfigurationFileUpdater(object):
         try:
             return self.raw_file[0: self.raw_file.index('\nnetwork={')]
         except ValueError:
-            return ''
+            return (self.raw_file.strip() + '\n')
 
     def __get_network_list(self):
         try:
@@ -88,9 +89,8 @@ class ConfigurationFileUpdater(object):
                 return network
 
     def __update_config_file(self):
-        config_file = open(self.__config_file_path, 'w')
-        config_file.write(self.__create_config_file())
-        config_file.close()
+        with open(self.__config_file_path, 'w', 0) as config_file:
+            config_file.write(self.__create_config_file())
 
     def addNetwork(self, network):
         if self.__findNetwork(network) is None:
@@ -109,13 +109,14 @@ class ConfigurationFileUpdater(object):
 
 if __name__ == '__main__':
     try:
-        config_updater = ConfigurationFileUpdater()
+        config_updater = ConfigurationFileUpdater('testfile.conf')
     except FileError as error:
         config_updater = NullFileUpdater()
 
     for network in config_updater.networks:
+
         print(NetworkTemplate(network))
-    
+
     new_network = {"ssid": "myssid", "psk": "mypassword", "key_mgmt": "WPA-PSK"}
-    config_updater.addNetwork(new_network)
+    # config_updater.addNetwork(new_network)
     config_updater.removeNetwork(new_network)
