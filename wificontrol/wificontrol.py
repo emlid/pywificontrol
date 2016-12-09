@@ -23,37 +23,37 @@
 
 from hostapd import HostAP
 from wificommon import WiFi
-from wpas import WpaSupplicant
+from wpasupplicant import WpaSupplicant
 
 class WiFiControl(object):
 
     def __init__(self, interface='wlan0'):
-        
+
         self.wifi = WiFi(interface)
-        self.wpas = WpaSupplicant(interface)
+        self.wpasupplicant = WpaSupplicant(interface)
         self.hotspot = HostAP(interface)
 
     def start_host_mode(self):
         if not self.hotspot.started():
-            self.wpas.stop()
+            self.wpasupplicant.stop()
             self.hotspot.start()
 
     def start_client_mode(self):
-        if not self.wpas.started():
+        if not self.wpasupplicant.started():
             self.hotspot.stop()
-            self.wpas.start()
+            self.wpasupplicant.start()
 
     def turn_on_wifi(self):
-        self.wifi.unblock() 
-        self.wpas.start()
+        self.wifi.unblock()
+        self.wpasupplicant.start()
 
     def turn_off_wifi(self):
         self.hotspot.stop()
-        self.wpas.start()
+        self.wpasupplicant.start()
         self.wifi.block()
 
     def get_wifi_turned_on(self):
-        return (self.wpas.started() or self.hotspot.started())
+        return (self.wpasupplicant.started() or self.hotspot.started())
 
     def set_hostap_password(self, password):
         self.hotspot.set_hostap_password(password)
@@ -65,38 +65,38 @@ class WiFiControl(object):
         return self.hotspot.get_hostap_name()
 
     def set_device_names(self, name):
-        self.wpas.set_p2p_name(name)
+        self.wpasupplicant.set_p2p_name(name)
         self.hotspot.set_hostap_name(name)
         self.hotspot.set_host_name(name)
         self.wifi.restart_dns()
 
     def get_status(self):
-        return (self.get_state(), self.wpas.get_status())
+        return (self.get_state(), self.wpasupplicant.get_status())
 
     def get_added_networks(self):
-        return self.wpas.get_added_networks()
+        return self.wpasupplicant.get_added_networks()
 
     def add_network(self, network_parameters):
-        self.wpas.add_network(network_parameters)
+        self.wpasupplicant.add_network(network_parameters)
 
     def remove_network(self, network):
-        self.wpas.remove_network(network)
+        self.wpasupplicant.remove_network(network)
 
     def start_connecting(self, network, callback=None, args=None, timeout=10):
         if callback is None:
             callback = self.revert_on_connect_failure
             args = None
         self.start_client_mode()
-        self.wpas.start_connecting(network, callback, args, timeout)
+        self.wpasupplicant.start_connecting(network, callback, args, timeout)
 
     def stop_connecting(self):
-        self.wpas.stop_connecting()
+        self.wpasupplicant.stop_connecting()
 
     def disconnect(self):
-        self.wpas.disconnect()
+        self.wpasupplicant.disconnect()
 
     def get_state(self):
-        if self.wpas.started():
+        if self.wpasupplicant.started():
             return "wpa_supplicant"
         if self.hotspot.started():
             return "hostapd"
