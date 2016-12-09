@@ -6,7 +6,7 @@ package:
 	python setup.py sdist
 
 test:
-	nosetests
+	python setup.py test
 
 clean:
 	rm -rf build
