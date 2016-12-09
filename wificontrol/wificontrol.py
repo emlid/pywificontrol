@@ -27,11 +27,15 @@ from wpasupplicant import WpaSupplicant
 
 class WiFiControl(object):
 
-    def __init__(self, interface='wlan0'):
+    def __init__(self, interface='wlan0',
+        wpas_config="/etc/wpa_supplicant/wpa_supplicant.conf",
+        p2p_config="/etc/wpa_supplicant/p2p_supplicant.conf",
+        hostapd_config="/etc/hostapd/hostapd.conf", 
+        hostname_config='/etc/hostname'):
 
         self.wifi = WiFi(interface)
-        self.wpasupplicant = WpaSupplicant(interface)
-        self.hotspot = HostAP(interface)
+        self.wpasupplicant = WpaSupplicant(interface, wpas_config, p2p_config)
+        self.hotspot = HostAP(interface, hostapd_config, hostname_config)
 
     def start_host_mode(self):
         if not self.hotspot.started():
