@@ -18,7 +18,7 @@ class WiFi(object):
         self.execute_command(self.restart_mdns)
 
     def block():
-        self.execute_command(self.rfkill_wifi_control("unblock"))
+        self.execute_command(self.rfkill_wifi_control("block"))
 
     def unblock():
         self.execute_command(self.rfkill_wifi_control("unblock"))

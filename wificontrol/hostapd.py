@@ -64,7 +64,6 @@ class HostAP(WiFi):
         else:
             self.execute_command('hostname -F {}'.format(self.hostname_path))
 
-
     def get_host_name(self):
         return self.execute_command("cat {}".format(self.hostname_path)).strip()
 
