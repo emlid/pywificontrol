@@ -55,26 +55,26 @@ class WifiControlNetworkConverter(object):
         if (self.key_mgmt == 'NONE'):
             if not self.group:
                 yield "ssid", self.name
-                yield "security", "open"               
+                yield "security", "Open"
             else:
                 yield "ssid", self.name
-                yield "security", "wep"
+                yield "security", "WEP"
 
         elif (self.key_mgmt == 'WPA-PSK'):
             if not self.proto:
                 yield "ssid", self.name
-                yield "security", "wpapsk"
+                yield "security", "WPA-PSK"
             else:
                 yield "ssid", self.name
-                yield "security", "wpa2psk"
+                yield "security", "WPA2-PSK"
 
         elif (self.key_mgmt == 'WPA-EAP'):
             yield "ssid", self.name
-            yield "security", "wpaeap"
+            yield "security", "WPA-EAP"
 
         else:
             yield "ssid", self.name
-            yield "security", "base"
+            yield "security", "NONE"
 
 def ConvertToWpasNetwork(network):
     return dict(WpasNetworkConverter(network))
