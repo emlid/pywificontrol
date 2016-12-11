@@ -227,12 +227,11 @@ class WiFiControl(object):
 
     def _set_host_name(self, name='reach'):
         try:
-            hostname_file = open(self.hostname_path, 'w')
+            with open(self.hostname_path, 'w', 0) as hostname_file:
+                hostname_file.write(name + '\n')
         except IOError:
             return False
         else:
-            hostname_file.write(name + '\n')
-            hostname_file.close()
             try:
                 self._launch('hostname -F {}'.format(self.hostname_path))
             except subprocess.CalledProcessError:
@@ -296,7 +295,7 @@ class WiFiControl(object):
                     network_params = dict()
                     network_params['mac address'] = self._get_network_parameter(
                         'bssid')
-                    network_params['ssid'] = self._get_network_parameter('ssid')
+                    network_params['ssid'] = self._get_network_parameter('ssid').decode('string_escape')
                     network_params['IP address'] = self._get_network_parameter(
                         'ip_address')
                     network_state = ("wpa_supplicant", network_params)
@@ -430,9 +429,8 @@ class WiFiControl(object):
             if not network_to_add:
                 return False
             try:
-                wpa_supplicant_file = open(self.wpa_supplicant_path, 'a')
-                wpa_supplicant_file.write(network_to_add)
-                wpa_supplicant_file.close()
+                with open(self.wpa_supplicant_path, 'a', 0) as wpa_supplicant_file:
+                    wpa_supplicant_file.write(network_to_add)
             except IOError:
                 return False
             else:
@@ -535,9 +533,8 @@ class WiFiControl(object):
 
     def _read_wpa_supplicant_file(self):
         try:
-            wpa_supplicant_file = open(self.wpa_supplicant_path, 'r')
-            info = wpa_supplicant_file.read()
-            wpa_supplicant_file.close()
+            with open(self.wpa_supplicant_path, 'r') as wpa_supplicant_file:
+                info = wpa_supplicant_file.read()
         except (IOError, ValueError):
             return None
         else:
@@ -545,9 +542,8 @@ class WiFiControl(object):
 
     def _write_new_wpa_supplicant_file(self, new_file):
         try:
-            wpa_supplicant_file = open(self.wpa_supplicant_path, 'w')
-            wpa_supplicant_file.write(new_file)
-            wpa_supplicant_file.close()
+            with open(self.wpa_supplicant_path, 'w', 0) as wpa_supplicant_file:
+                wpa_supplicant_file.write(new_file)
         except (IOError, ValueError):
             return False
         else:
