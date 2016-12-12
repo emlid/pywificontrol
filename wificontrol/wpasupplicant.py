@@ -81,7 +81,8 @@ class WpaSupplicant(WiFi):
             return network_params
 
     def get_added_networks(self):
-        return [ConvertToWifiControlNetwork(network) for network in self.config_updater.networks]
+        current_network = self.get_status()
+        return [ConvertToWifiControlNetwork(network, current_network) for network in self.config_updater.networks]
 
     def add_network(self, network_parameters):
         network = ConvertToWpasNetwork(network_parameters)
