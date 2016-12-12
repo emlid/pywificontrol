@@ -1,3 +1,26 @@
+# wificontrol code is placed under the GPL license.
+# Written by Ivan Sapozhkov (ivan.sapozhkov@emlid.com)
+# Copyright (c) 2016, Emlid Limited
+# All rights reserved.
+
+# If you are interested in using wificontrol code as a part of a
+# closed source project, please contact Emlid Limited (info@emlid.com).
+
+# This file is part of wificontrol.
+
+# wificontrol is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# wificontrol is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
+
 class FileError(Exception):
     pass
 
