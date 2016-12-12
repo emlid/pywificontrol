@@ -51,7 +51,7 @@ The package was tested with **Python 2.7**
  - `turn_off_wifi()` - turned on wifi through `rfkill unblock` command
  - `get_wifi_turned_on()` - return value: `bool`
 
- - `get_added_networks()` - return list of added networks. Return value: `list[{'security': security, 'ssid': ssid}]`
+ - `get_added_networks()` - return list of added networks. Return value: `list[{'security': security, 'ssid': ssid, 'connected': bool}]`
 
  - `add_network(dict{'security': security, 'ssid': ssid, 'password': psk, 'identity': identity})` - add new network.   
 **List of possible security protocols**:
