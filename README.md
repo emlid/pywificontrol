@@ -4,10 +4,11 @@
 That module provide two modes of wireless interface:
 
  1. Like AccessPoint in host mode.
-
  2. Like Client in client mode.
 
 Functions of module based on two packages: *hostapd* (AP-mode) and *wpa_supplicant* (Client-mode).  
+WPA Supplicant operations use DBus w1.fi.wpa_supplicant1
+
 For successful using intall it:
 ```bash
 sudo apt-get update
@@ -17,36 +18,42 @@ sudo apt-get install wpa_supplicant
 This package works only in root mode   
 Wificontrol was tested on Intel Edison with Yocto image
 
-# Dependencies
+### Dependencies
 
 `sysdmanager`
 
 The package was tested with **Python 2.7**
 
-# Install
+### Install
 
 `make install`
 
-# WiFiControl API
+### Tests
 
- - `WiFiControl()` - constructor.
+`sudo make test`
 
+### Usage
+
+ - `WiFiControl(arguments)` - constructor. Arguments:
+   - interface: WiFi interface. Default value: 'wlan0'
+   - wpas_config: path to wpa_supplicant.conf file. Default value: '/etc/wpa_supplicant/wpa_supplicant.conf'
+   - p2p_config: path to p2p_supplicant.conf file. Default value: '/etc/wpa_supplicant/p2p_supplicant.conf'
+   - hostapd_config: path to hostapd.conf file. Default value: '/etc/hostapd/hostapd.conf'
+   - hostname_config: path to hostname file. Default value: '/etc/hostname'
  
  - `start_host_mode()` - run WiFi interface as wireless AP mode
  - `start_client_mode()` - run WiFi interface as client mode
- - `set_device_name(newName)` - change all names of your device
+ - `set_device_names(newName)` - change your device name
  - `get_device_name()` - return name of your device
  - `get_hostap_name()` - return name of your Access Point in AP mode
- - `get_status()` -  return value: `tuple(mode, network_info)`. Network info is a `dict('IP address', 'ssid', 'mac address')`
- - `turn_on_wifi()` - turned on wifi through `rfkill block` command. Return value: `bool`
- - `turn_off_wifi()` - turned on wifi through `rfkill unblock` command. Return value: `bool`
+ - `get_status()` - set WiFi status. return value: `tuple(mode, network_info)`. Network info is a `dict('IP address', 'ssid', 'mac address')`
+ - `turn_on_wifi()` - turned on wifi through `rfkill block` command
+ - `turn_off_wifi()` - turned on wifi through `rfkill unblock` command
  - `get_wifi_turned_on()` - return value: `bool`
-
 
  - `get_added_networks()` - return list of added networks. Return value: `list[{'security': security, 'ssid': ssid}]`
 
-
- - `add_network(dict{'security': security, 'ssid': ssid, 'password': psk, 'identity': identity})` - add network to wpa_supplicant.conf file. Return value: `bool`   
+ - `add_network(dict{'security': security, 'ssid': ssid, 'password': psk, 'identity': identity})` - add new network.   
 **List of possible security protocols**:
     - 'open'
     - 'wep'
@@ -57,22 +64,22 @@ For network with Open security protocol field 'password' has no effect.
 Network with WPA Enterprise security protocol has additional field 'identity'
 
  - `remove_network(dict{'ssid': ssid})` - remove network from wpa_supplicant.conf file. Return value: `bool`
- - `change_priority(list[dict{'ssid': ssid}) - change autoconnection priority of networks in wpa_supplicant.conf file. Return value: `bool`
- 
- - `start_connecting(dict{'ssid': ssid}, callback=None, args=None, timeout=const, any_network=False)` - connect to network from network_list in thread.  
+  
+ - `start_connecting(network, callback=None, args=None, timeout=const)` - connect to network from network_list in thread.  
   Connecting to network continue for a several seconds into a background Thread.  
   To notify user about ending of connection use callback functions.  
   Prototype of callback function is `foo(result, args)`.  
   If program can't connect to your network and you don't set any callback then you will be switched to host mode.  
+  For try connection to any known network set network=None
   There are some reasons for ending of connection:
     * Successful connection
-	* Timeout error
-	* Retry of connection
-	* User request of end connection
+  	* Timeout error
+    * Retry of connection
+    * User request of end connection
  - `stop_connecting()` - stop connection thread
  - `disconnect()` - disconnect from current network
  
-#Exceptions
+### Exceptions
 
-If you don't have hostapd or wpa_supplicant package, `__init__` function raise `OSError` exception. 
-
+If you don't have hostapd or wpa_supplicant package, `__init__` function raise `OSError` exception.  
+WiFiControl raise `WiFiControlError` exception on failure.

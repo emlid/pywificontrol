@@ -1,17 +1,18 @@
-from wificontrol import wificontrol
 import sys
+from wificontrol import WiFiControl, WiFiControlError
 
 def ConnectionCallback(result, wific):
     if not result:
         print "Can't connect to any network."
         print "Start HOSTAP mode"
-        if wific.start_host_mode():
+        try:
+            wific.start_host_mode()
+        except WiFiControlError as error:
+            print error
+            sys.exit(2)
+        else: 
             print "In HOST mode"
             sys.exit(10)
-        else:
-            print "hostapd service error"
-            print "For more information call \'systemctl status hostapd.service\'"
-            sys.exit(2)
     else:
         status = wific.get_status()[1]
         print "Connected to {}".format(status['ssid'])
@@ -25,17 +26,18 @@ if __name__ == "__main__":
         sys.exit(2)
     else:
         print "Start wpa_supplicant service"
-        if not rwc.start_client_mode():
-            print "wpa_supplicant service error"
-            print "For more information call \'systemctl status wpa_supplicant.service\'"
-            print "Trying start HOST mode"
-            if not rwc.start_host_mode():
-                print "hostapd service error"
-                print "For more information call \'systemctl status hostapd.service\'"
+        try:
+            rwc.start_client_mode()
+        except WiFiControlError as error:
+            print error
+            try:
+                rwc.start_host_mode()
+            except WiFiControlError as error:
+                print error
                 sys.exit(2)
             else:
                 print "In HOST mode"
                 sys.exit(10)
-        print "Start connecting to networks"
-        rwc.start_connecting(None, callback=ConnectionCallback,
-                args = rwc, any_network=True)
+        else:
+            print "Start connecting to networks"
+            rwc.start_connecting(None, callback=ConnectionCallback, args = rwc)
