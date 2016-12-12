@@ -80,6 +80,9 @@ class WiFiControl(object):
     def get_added_networks(self):
         return self.wpasupplicant.get_added_networks()
 
+    def get_ip(self):
+        return self.wifi.get_device_ip()
+
     def add_network(self, network_parameters):
         self.wpasupplicant.add_network(network_parameters)
 

@@ -29,7 +29,7 @@ class WiFi(object):
         try:
             return re.search("inet addr:{}".format(ip_pattern), data).group(0)[10:]
         except TypeError:
-            return None
+            return "127.0.0.1"
 
     def get_device_mac(self):
         mac_pattern = "..:..:..:..:..:.."
@@ -37,7 +37,7 @@ class WiFi(object):
         try:
             return re.search(mac_pattern, data).group(0)
         except TypeError:
-            return None
+            return "00:00:00:00:00:00"
 
     def execute_command(self, args):
         try:
