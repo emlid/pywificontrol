@@ -25,7 +25,7 @@ from wificommon import WiFi
 from threading import Thread, Event, Timer
 from utils import ConfigurationFileUpdater, NullFileUpdater
 from utils import WpaSupplicantInterface, WpaSupplicantNetwork
-from utils import ConvertToWpasNetwork, ConvertToWifiControlNetwork
+from utils import convert_to_wpas_network, convert_to_wificontrol_network
 from utils import FileError
 from utils import ServiceError, InterfaceError, PropertyError
 
@@ -82,26 +82,26 @@ class WpaSupplicant(WiFi):
 
     def get_added_networks(self):
         current_network = self.get_status()
-        return [ConvertToWifiControlNetwork(network, current_network) for network in self.config_updater.networks]
+        return [convert_to_wificontrol_network(network, current_network) for network in self.config_updater.networks]
 
     def add_network(self, network_parameters):
-        network = ConvertToWpasNetwork(network_parameters)
+        network = convert_to_wpas_network(network_parameters)
         try:
-            self.config_updater.addNetwork(network)
+            self.config_updater.add_network(network)
         except AttributeError:
             pass
         else:
             if self.started():
-                self.wpa_supplicant_interface.addNetwork(network)
+                self.wpa_supplicant_interface.add_network(network)
 
     def remove_network(self, network):
         try:
-            self.config_updater.removeNetwork(network)
+            self.config_updater.remove_network(network)
         except AttributeError:
             pass
         else:
             if self.started():
-                self.wpa_supplicant_interface.removeNetwork(self.find_network_path(network))
+                self.wpa_supplicant_interface.remove_network(self.find_network_path(network))
 
     def start_connecting(self, network, callback=None,
                          args=None, timeout=10):
@@ -137,23 +137,23 @@ class WpaSupplicant(WiFi):
     
     # Network actions
     def find_network_path(self, aim_network):
-        for network in self.wpa_supplicant_interface.getNetworks():
-            if self.wpa_network_manager.getNetworkSSID(network) == aim_network['ssid']:
+        for network in self.wpa_supplicant_interface.get_networks():
+            if self.wpa_network_manager.get_network_SSID(network) == aim_network['ssid']:
                 return network
 
     def get_current_network_ssid(self):
-        network = self.wpa_supplicant_interface.getCurrentNetwork()
-        return self.wpa_network_manager.getNetworkSSID(network)
+        network = self.wpa_supplicant_interface.get_current_network()
+        return self.wpa_network_manager.get_network_SSID(network)
 
     # Connection actions
     def start_network_connection(self, network):
         if network is not None:
-            self.wpa_supplicant_interface.selectNetwork(self.find_network_path(network))
+            self.wpa_supplicant_interface.select_network(self.find_network_path(network))
         else:
             self.wpa_supplicant_interface.reassociate()
 
     def wait_untill_connection_complete(self):
-        while self.wpa_supplicant_interface.getState() != "completed":
+        while self.wpa_supplicant_interface.get_state() != "completed":
             if not self.connection_event.is_set():
                 raise RuntimeError("Can't connect to network")
     

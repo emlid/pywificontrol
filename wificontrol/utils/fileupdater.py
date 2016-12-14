@@ -51,10 +51,10 @@ class NullFileUpdater(object):
         self.networks = list()
         self.raw_file = None
 
-    def addNetwork(self, network):
+    def add_network(self, network):
         pass
 
-    def removeNetwork(self, network):
+    def remove_network(self, network):
         pass
 
 class ConfigurationFileUpdater(object):
@@ -113,14 +113,14 @@ class ConfigurationFileUpdater(object):
         with open(self.__config_file_path, 'w', 0) as config_file:
             config_file.write(self.__create_config_file())
 
-    def addNetwork(self, network):
+    def add_network(self, network):
         if self.__findNetwork(network) is None:
             self.networks.append(network)
             self.__update_config_file()
         else:
             raise AttributeError("Network already added")
 
-    def removeNetwork(self, network):
+    def remove_network(self, network):
         try:
             self.networks.remove(self.__findNetwork(network))
         except ValueError:
@@ -139,5 +139,5 @@ if __name__ == '__main__':
         print(NetworkTemplate(network))
 
     new_network = {"ssid": "myssid", "psk": "mypassword", "key_mgmt": "WPA-PSK"}
-    # config_updater.addNetwork(new_network)
-    config_updater.removeNetwork(new_network)
+    config_updater.addNetwork(new_network)
+    config_updater.remove_network(new_network)

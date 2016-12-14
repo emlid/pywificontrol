@@ -56,7 +56,7 @@ class WiFiControl(object):
         self.wpasupplicant.start()
         self.wifi.block()
 
-    def get_wifi_turned_on(self):
+    def is_wifi_on(self):
         return (self.wpasupplicant.started() or self.hotspot.started())
 
     def set_hostap_password(self, password):

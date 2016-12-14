@@ -100,10 +100,10 @@ class WifiControlNetworkConverter(object):
             yield "security", "NONE"
         yield "connected", False
 
-def ConvertToWpasNetwork(network):
+def convert_to_wpas_network(network):
     return dict(WpasNetworkConverter(network))
 
-def ConvertToWifiControlNetwork(network, current_network):
+def convert_to_wificontrol_network(network, current_network):
     wifinetwork = dict(WifiControlNetworkConverter(network))
     try:
         if wifinetwork['ssid'] == current_network['ssid']:
@@ -116,6 +116,6 @@ def ConvertToWifiControlNetwork(network, current_network):
 
 if __name__ == '__main__':
     network = {'ssid': "MySSID", 'password': "NewPassword", 'security': "wpaeap", 'identity': "alex@example.com"}
-    conv = ConvertToWpasNetwork(network)
-    reconv = ConvertToWifiControlNetwork(conv)
+    conv = convert_to_wpas_network(network)
+    reconv = convert_to_wificontrol_network(conv)
     print(conv, reconv)

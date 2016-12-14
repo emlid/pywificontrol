@@ -1,6 +1,6 @@
 from .fileupdater import ConfigurationFileUpdater, NullFileUpdater
-from .dbus_wpasupplicant import WpaSupplicantInterface, WpaSupplicantNetwork
-from .networkstranslate import ConvertToWpasNetwork, ConvertToWifiControlNetwork
+from .dbuswpasupplicant import WpaSupplicantInterface, WpaSupplicantNetwork
+from .networkstranslate import convert_to_wpas_network, convert_to_wificontrol_network
 
 from .fileupdater import FileError
-from .dbus_wpasupplicant import ServiceError, InterfaceError, PropertyError
+from .dbuswpasupplicant import ServiceError, InterfaceError, PropertyError

@@ -49,7 +49,7 @@ class WpaSupplicantTest(unittest.TestCase):
 
     def assert_networks_number(self):
         file_network_count = len(self.wifi.get_added_networks())
-        service_network_count = len(self.wifi.wpa_supplicant_interface.getNetworks())
+        service_network_count = len(self.wifi.wpa_supplicant_interface.get_networks())
         print("Number networks in Config file: {}".format(file_network_count))
         print("Number networks in wpa_supplicant service: {}".format(service_network_count))
         # with self.assertRaises(ValidationError):

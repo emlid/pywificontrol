@@ -55,10 +55,10 @@ class WpaSupplicantDBus(object):
         except dbus.exceptions.DBusException as error:
             raise ServiceError(error)
 
-    def showWpaSupplicantProperties(self):
+    def show_wpa_supplicant_properties(self):
         return self.__get_properties()
 
-    def getInterface(self, interface):
+    def get_interface(self, interface):
         wpa_interface = self.__get_interface()
         try:
             return wpa_interface.GetInterface(interface)
@@ -75,7 +75,7 @@ class WpaSupplicantInterface(WpaSupplicantDBus):
         self.interface = interface
 
     def initialize(self):
-        self._interface_path = self.getInterface(self.interface)
+        self._interface_path = self.get_interface(self.interface)
 
     def __get_interface(self):
         try:
@@ -107,42 +107,42 @@ class WpaSupplicantInterface(WpaSupplicantDBus):
         except dbus.exceptions.DBusException as error:
             raise ServiceError(error)
 
-    def addNetwork(self, network):
+    def add_network(self, network):
         interface = self.__get_interface()
         try:
             return interface.AddNetwork(dbus.Dictionary(network, 'sv'))
         except dbus.exceptions.DBusException as error:
             raise ServiceError(error)
 
-    def removeNetwork(self, network_path):
+    def remove_network(self, network_path):
         interface = self.__get_interface()
         try:
             interface.RemoveNetwork(network_path)
         except dbus.exceptions.DBusException as error:
             raise ServiceError(error)
 
-    def removeAllNetworks(self):
+    def remove_all_networks(self):
         interface = self.__get_interface()
         try:
             interface.RemoveAllNetworks()
         except dbus.exceptions.DBusException as error:
             raise ServiceError(error)
 
-    def selectNetwork(self, network_path):
+    def select_network(self, network_path):
         interface = self.__get_interface()
         try:
             interface.SelectNetwork(network_path)
         except dbus.exceptions.DBusException as error:
             raise ServiceError(error)
 
-    def networkReply(self, network_path, parameter, value):
+    def network_reply(self, network_path, parameter, value):
         interface = self.__get_interface()
         try:
             interface.NetworkReply(network_path, parameter, value)
         except dbus.exceptions.DBusException as error:
             raise ServiceError(error)
 
-    def signalPoll(self):
+    def signal_poll(self):
         interface = self.__get_interface()
         try:
             return interface.SignalPoll()
@@ -173,28 +173,28 @@ class WpaSupplicantInterface(WpaSupplicantDBus):
         except dbus.exceptions.DBusException as error:
             raise ServiceError(error)
 
-    def getState(self):
+    def get_state(self):
         return self.__get_property("State")
 
-    def getInterfaceName(self):
+    def get_interface_name(self):
         return self.__get_property("Ifname")
 
-    def getScanning(self):
+    def get_scanning(self):
         return self.__get_property("Scanning")
 
-    def getApScan(self):
+    def get_ap_scan(self):
         return self.__get_property("ApScan")
 
-    def setApScan(self, value):
+    def set_ap_scan(self, value):
         return self.__set_property("ApScan", dbus.UInt32(value))
 
-    def getCurrentNetwork(self):
+    def get_current_network(self):
         return self.__get_property("CurrentNetwork")
 
-    def getNetworks(self):
+    def get_networks(self):
         return self.__get_property("Networks")
 
-    def getDisconnectReason(self):
+    def get_disconnect_reason(self):
         return self.__get_property("DisconnectReason")
 
 class WpaSupplicantNetwork(WpaSupplicantDBus):
@@ -212,14 +212,14 @@ class WpaSupplicantNetwork(WpaSupplicantDBus):
         except dbus.exceptions.DBusException as error:
             raise PropertyError(error)
 
-    def networkEnable(self, network_path):
+    def network_enable(self, network_path):
         return self.__get_properties(network_path)['Enable']
 
-    def networkProperties(self, network_path):
+    def network_properties(self, network_path):
         return self.__get_properties(network_path)['Properties']
 
-    def getNetworkSSID(self, network_path):
-        ssid = self.networkProperties(network_path)['ssid']
+    def get_network_SSID(self, network_path):
+        ssid = self.network_properties(network_path)['ssid']
         try:
             return str(ssid.decode('hex')).strip("\"")
         except TypeError:
@@ -229,7 +229,7 @@ if __name__ == '__main__':
     wifi = WpaSupplicantInterface('wlp6s0')
     wifi.initialize()
     network_manager = WpaSupplicantNetwork()
-    network_path = wifi.getCurrentNetwork()
-    wifi.setApScan("0")
-    new_network={"ssid": "myssid", "psk": "mypassword"}
-    print(network_manager.networkProperties(network_path)['ssid'])
+    # network_path = wifi.get_current_network()
+    # wifi.set_ap_scan("0")
+    # new_network={"ssid": "myssid", "psk": "mypassword"}
+    print(network_manager.network_properties(network_path)['ssid'])

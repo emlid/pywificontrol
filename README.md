@@ -21,6 +21,7 @@ Wificontrol was tested on Intel Edison with Yocto image
 ### Dependencies
 
 `sysdmanager`
+`netifaces`
 
 The package was tested with **Python 2.7**
 
