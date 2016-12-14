@@ -1,0 +1,2 @@
+sysdmanager==0.1.0
+netifaces==0.10.5
