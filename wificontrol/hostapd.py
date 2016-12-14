@@ -47,17 +47,17 @@ class HostAP(WiFi):
 
     def set_hostap_name(self, name='reach'):
         mac_addr = self.get_device_mac()[-6:]
-        self.execute_command("sed -i s/^ssid=.*/ssid={}{}/ {}".format(name, mac_addr, self.hostapd_path))
+        self.replace("^ssid=.*", "ssid={}{}".format(name, mac_addr), self.hostapd_path)
 
     def get_hostap_name(self):
-        return self.execute_command("grep \'^ssid=\' {}".format(self.hostapd_path))[5:-1]
+        return self.re_search("(?<=^ssid=).*", self.hostapd_path)
 
     def set_hostap_password(self, password):
-        self.execute_command("sed -i s/^wpa_passphrase=.*/wpa_passphrase={}/ {}".format(password, self.hostapd_path))
+        self.replace("^wpa_passphrase=.*", "wpa_passphrase={}".format(password), self.hostapd_path)
 
     def set_host_name(self, name='reach'):
         try:
-            with open(self.hostname_path, 'w') as hostname_file:
+            with open(self.hostname_path, 'w', 0) as hostname_file:
                 hostname_file.write(name + '\n')
         except IOError:
             pass
@@ -65,8 +65,7 @@ class HostAP(WiFi):
             self.execute_command('hostname -F {}'.format(self.hostname_path))
 
     def get_host_name(self):
-        return self.execute_command("cat {}".format(self.hostname_path)).strip()
+        return self.re_search("^.*", self.hostname_path)
 
 if __name__ == '__main__':
-    hotspot = HostAP()
-    
+    hotspot = HostAP('wlp6s0')

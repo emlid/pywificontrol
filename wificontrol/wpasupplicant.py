@@ -130,10 +130,10 @@ class WpaSupplicant(WiFi):
 
     # Names changung actions
     def set_p2p_name(self, name='reach'):
-        self.execute_command("sed -i s/^p2p_ssid_postfix=.*/p2p_ssid_postfix={}/ {}".format(name, self.p2p_supplicant_path))
+        self.replace("^p2p_ssid_postfix=.*", "p2p_ssid_postfix={}".format(name), self.p2p_supplicant_path)
 
     def get_p2p_name(self):
-        return self.execute_command("grep \'^p2p_ssid_postfix=\' {}".format(self.p2p_supplicant_path))[17:-1]
+        return self.re_search("(?<=^p2p_ssid_postfix=).*", self.p2p_supplicant_path)
     
     # Network actions
     def find_network_path(self, aim_network):

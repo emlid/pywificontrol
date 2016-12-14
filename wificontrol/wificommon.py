@@ -21,6 +21,7 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
+import re
 import subprocess
 from sysdmanager import SystemdManager
 from netifaces import ifaddresses, AF_INET, AF_LINK
@@ -57,6 +58,18 @@ class WiFi(object):
             return ifaddresses(self.interface)[AF_LINK][0]['addr']
         except KeyError:
             return "00:00:00:00:00:00"
+
+    def re_search(self, pattern, file):
+        with open(file, 'r', 0) as data_file:
+            data = data_file.read()
+        return re.search(pattern, data, re.MULTILINE).group(0)
+
+    def replace(self, pattern, text, file):
+        with open(file, 'r', 0) as data_file:
+            data = data_file.read()
+        old = re.search(pattern, data, re.MULTILINE).group(0)
+        with open(file, 'w', 0) as data_file:
+            data_file.write(data.replace(old, text))
 
     def execute_command(self, args):
         try:
