@@ -21,9 +21,9 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
-import re
 import subprocess
 from sysdmanager import SystemdManager
+from netifaces import ifaddresses, AF_INET, AF_LINK
 
 class WiFiControlError(Exception):
     pass
@@ -47,19 +47,15 @@ class WiFi(object):
         self.execute_command(self.rfkill_wifi_control("unblock"))
 
     def get_device_ip(self):
-        ip_pattern = "[0-9]+.[0-9]+.[0-9]+.[0-9]+"
-        data = self.execute_command("ifconfig {}".format(self.interface))
         try:
-            return re.search("inet addr:{}".format(ip_pattern), data).group(0)[10:]
-        except TypeError:
+            return ifaddresses(self.interface)[AF_INET][0]['addr']
+        except KeyError:
             return "127.0.0.1"
 
     def get_device_mac(self):
-        mac_pattern = "..:..:..:..:..:.."
-        data = self.execute_command("ifconfig {}".format(self.interface))
         try:
-            return re.search(mac_pattern, data).group(0)
-        except TypeError:
+            return ifaddresses(self.interface)[AF_LINK][0]['addr']
+        except KeyError:
             return "00:00:00:00:00:00"
 
     def execute_command(self, args):
@@ -72,4 +68,6 @@ class WiFi(object):
             raise WiFiControlError(error_message)
 
 if __name__ == '__main__':
-    wifi = WiFi()
+    wifi = WiFi('wlp6s0')
+    print(wifi.get_device_ip())
+    print(wifi.get_device_mac())
