@@ -50,7 +50,7 @@ The package was tested with **Python 2.7**
  - `get_status()` - set WiFi status. return value: `tuple(mode, network_info)`. Network info is a `dict('IP address', 'ssid', 'mac address')`
  - `turn_on_wifi()` - turned on wifi through `rfkill block` command
  - `turn_off_wifi()` - turned on wifi through `rfkill unblock` command
- - `get_wifi_turned_on()` - return value: `bool`
+ - `is_wifi_on()` - return value: `bool`
 
  - `get_added_networks()` - return list of added networks. Return value: `list[{'security': security, 'ssid': ssid, 'connected': bool}]`
 
