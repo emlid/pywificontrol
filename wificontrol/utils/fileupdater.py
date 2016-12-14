@@ -59,15 +59,13 @@ class NullFileUpdater(object):
 
 class ConfigurationFileUpdater(object):
 
-    __config_file_path = "/etc/wpa_supplicant/wpa_supplicant.conf"
 
-    def __init__(self, config_file_path=None):
+    def __init__(self, config_file_path="/etc/wpa_supplicant/wpa_supplicant.conf"):
 
         self.head = None
         self.networks = list()
         self.raw_file = None
-        if config_file_path is not None:
-            self.__config_file_path = config_file_path
+        self.__config_file_path = config_file_path
 
         self.__initialise()
 
