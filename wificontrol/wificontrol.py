@@ -83,6 +83,12 @@ class WiFiControl(object):
     def get_ip(self):
         return self.wifi.get_device_ip()
 
+    def scan(self):
+        self.wpasupplicant.scan()
+
+    def get_scan_results(self):
+        return self.wpasupplicant.get_scan_results()
+
     def add_network(self, network_parameters):
         self.wpasupplicant.add_network(network_parameters)
 

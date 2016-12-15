@@ -24,8 +24,8 @@
 from wificommon import WiFi
 from threading import Thread, Event, Timer
 from utils import ConfigurationFileUpdater, NullFileUpdater
-from utils import WpaSupplicantInterface, WpaSupplicantNetwork
-from utils import convert_to_wpas_network, convert_to_wificontrol_network
+from utils import WpaSupplicantInterface, WpaSupplicantNetwork, WpaSupplicantBSS
+from utils import convert_to_wpas_network, convert_to_wificontrol_network, create_security
 from utils import FileError
 from utils import ServiceError, InterfaceError, PropertyError
 
@@ -44,6 +44,7 @@ class WpaSupplicant(WiFi):
             raise OSError('No WPA_SUPPLICANT servise')
 
         self.wpa_supplicant_interface = WpaSupplicantInterface(self.interface)
+        self.wpa_bss_manager = WpaSupplicantBSS()
         self.wpa_network_manager = WpaSupplicantNetwork()
         try:
             self.config_updater = ConfigurationFileUpdater(self.wpa_supplicant_path)
@@ -79,6 +80,13 @@ class WpaSupplicant(WiFi):
             network_params['IP address'] = self.get_device_ip()
         finally:
             return network_params
+
+    def scan(self):
+        self.wpa_supplicant_interface.scan()
+        self.wait_scanning()
+
+    def get_scan_results(self):
+        return [self.get_bss_network_info(bss) for bss in self.wpa_supplicant_interface.get_BSSs()]
 
     def get_added_networks(self):
         current_network = self.get_status()
@@ -127,6 +135,45 @@ class WpaSupplicant(WiFi):
 
     def disconnect(self):
         self.wpa_supplicant_interface.disconnect()
+
+    #Scan functions
+    def wait_scanning(self):
+        while self.wpa_supplicant_interface.get_scanning():
+            pass
+
+    def get_bss_network_info(self, bss):
+        return {
+        "ssid": self.wpa_bss_manager.get_SSID(bss),
+        "mac address": self.wpa_bss_manager.get_BSSID(bss),
+        "security": self.get_security(bss)
+        }
+
+    def get_security(self, bss_path):
+        wpa_array = self.wpa_bss_manager.get_WPA(bss_path)
+        rsn_array = self.wpa_bss_manager.get_RSN(bss_path)
+        proto = self.get_protocol(wpa_array, rsn_array)
+        key_mgmt, group = self.get_keymgmt_group(wpa_array, rsn_array, proto)
+        return create_security(proto, key_mgmt, group)
+
+    def get_protocol(self, wpa_dict, rsn_dict):
+        if not self.is_dict_empty(wpa_dict):
+            return "WPA"
+        if not self.is_dict_empty(rsn_dict):
+            return "RSN"
+        return ""
+
+    def get_keymgmt_group(self, wpa_dict, rsn_dict, proto):
+        if proto == "WPA":
+            return [str(key) for key in wpa_dict['KeyMgmt']], str(wpa_dict['Group'])
+        if proto == "RSN":
+            return [str(key) for key in rsn_dict['KeyMgmt']], str(rsn_dict['Group'])
+        return [], "" 
+
+    def is_dict_empty(self, dict):
+        for value in dict.values():
+            if value:
+                return False
+        return True
 
     # Names changung actions
     def set_p2p_name(self, name='reach'):

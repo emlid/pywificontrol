@@ -100,6 +100,27 @@ class WifiControlNetworkConverter(object):
             yield "security", "NONE"
         yield "connected", False
 
+def create_security(proto, key_mgmt, group):
+    if not proto:
+        return 'open'
+    if not key_mgmt:
+        if "wep" in group:
+            return 'wep'
+        else:
+            return None
+    else:
+        if "wpa-psk" in key_mgmt:
+            if proto == "WPA":
+                return "wpapsk"
+            elif proto == "RSN":
+                return "wpa2psk"
+            else:
+                return None
+        elif "wpa-eap" in key_mgmt:
+            return 'wpaeap'
+        else:
+            return None
+
 def convert_to_wpas_network(network):
     return dict(WpasNetworkConverter(network))
 

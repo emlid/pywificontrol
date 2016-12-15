@@ -176,6 +176,12 @@ class WpaSupplicantInterface(WpaSupplicantDBus):
     def get_state(self):
         return self.__get_property("State")
 
+    def get_current_BSS(self):
+        return self.__get_property("CurrentBSS")
+
+    def get_BSSs(self):
+        return self.__get_property("BSSs")        
+
     def get_interface_name(self):
         return self.__get_property("Ifname")
 
@@ -188,6 +194,12 @@ class WpaSupplicantInterface(WpaSupplicantDBus):
     def set_ap_scan(self, value):
         return self.__set_property("ApScan", dbus.UInt32(value))
 
+    def get_scan_interval(self):
+        return self.__get_property("ScanInterval")
+
+    def set_scan_interval(self, value):
+        return self.__set_property("ScanInterval", dbus.Int32(value))
+
     def get_current_network(self):
         return self.__get_property("CurrentNetwork")
 
@@ -196,6 +208,63 @@ class WpaSupplicantInterface(WpaSupplicantDBus):
 
     def get_disconnect_reason(self):
         return self.__get_property("DisconnectReason")
+
+
+class WpaSupplicantBSS(WpaSupplicantDBus):
+
+    _BSS_NAME = "fi.w1.wpa_supplicant1.BSS"
+
+    def __init__(self):
+        super(WpaSupplicantBSS, self).__init__()
+
+    def __get_property(self, bss_path, property_name):
+        try:
+            obj = self._bus.get_object(self._BASE_NAME, bss_path)
+            properties_interface = dbus.Interface(obj, dbus.PROPERTIES_IFACE)
+            return properties_interface.Get(self._BSS_NAME, property_name)
+        except dbus.exceptions.DBusException as error:
+            raise PropertyError(error)
+
+    def __set_property(self, bss_path, property_name, property_value):
+        try:
+            obj = self._bus.get_object(self._BASE_NAME, bss_path)
+            properties_interface = dbus.Interface(obj, dbus.PROPERTIES_IFACE)
+            properties_interface.Set(self._BSS_NAME, property_name, property_value)
+        except dbus.exceptions.DBusException as error:
+            raise PropertyError(error)
+
+    def get_SSID(self, bss_path):
+        name_array = self.__get_property(bss_path, "SSID")
+        try:
+            ssid = "".join([str(letter) for letter in name_array])
+        except UnicodeDecodeError:
+            ssid = "".join([hex(letter)[2:].zfill(2) for letter in name_array])
+            ssid = str(ssid.decode('hex'))
+        return ssid
+
+    def get_BSSID(self, bss_path):
+        mac_array = self.__get_property(bss_path, "BSSID")
+        bssid = ":".join([hex(byte)[2:].zfill(2) for byte in mac_array])
+        return bssid
+
+    def get_WPA(self, bss_path):
+        return self.__get_property(bss_path, "WPA")
+
+    def get_RSN(self, bss_path):
+        return self.__get_property(bss_path, "RSN")
+
+    def get_WPS(self, bss_path):
+        return self.__get_property(bss_path, "WPS")
+
+    def get_mode(self, bss_path):
+        return str(self.__get_property(bss_path, "Mode"))
+
+    def get_frequency(self, bss_path):
+        return int(self.__get_property(bss_path, "Frequency"))
+
+    def get_frequency(self, bss_path):
+        return int(self.__get_property(bss_path, "Signal"))
+
 
 class WpaSupplicantNetwork(WpaSupplicantDBus):
 
@@ -228,8 +297,5 @@ class WpaSupplicantNetwork(WpaSupplicantDBus):
 if __name__ == '__main__':
     wifi = WpaSupplicantInterface('wlp6s0')
     wifi.initialize()
+    bss_manager = WpaSupplicantBSS()
     network_manager = WpaSupplicantNetwork()
-    # network_path = wifi.get_current_network()
-    # wifi.set_ap_scan("0")
-    # new_network={"ssid": "myssid", "psk": "mypassword"}
-    print(network_manager.network_properties(network_path)['ssid'])
