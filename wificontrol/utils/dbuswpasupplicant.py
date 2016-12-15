@@ -262,7 +262,7 @@ class WpaSupplicantBSS(WpaSupplicantDBus):
     def get_frequency(self, bss_path):
         return int(self.__get_property(bss_path, "Frequency"))
 
-    def get_frequency(self, bss_path):
+    def get_signal(self, bss_path):
         return int(self.__get_property(bss_path, "Signal"))
 
 
