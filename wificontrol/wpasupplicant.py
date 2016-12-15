@@ -82,11 +82,15 @@ class WpaSupplicant(WiFi):
             return network_params
 
     def scan(self):
-        self.wpa_supplicant_interface.scan()
-        self.wait_scanning()
+        if self.started():
+            self.wpa_supplicant_interface.scan()
+            self.wait_scanning()
 
     def get_scan_results(self):
-        return [self.get_bss_network_info(bss) for bss in self.wpa_supplicant_interface.get_BSSs()]
+        if self.started():
+            return [self.get_bss_network_info(bss) for bss in self.wpa_supplicant_interface.get_BSSs()]
+        else:
+            return []
 
     def get_added_networks(self):
         current_network = self.get_status()
