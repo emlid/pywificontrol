@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='wificontrol',
-    version='0.3.0',
+    version='0.3.1',
     author='Ivan Sapozhkov',
     author_email='ivan.sapozhkov@emlid.com',
     packages=['wificontrol', 'wificontrol.utils'],
