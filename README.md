@@ -47,13 +47,14 @@ The package was tested with **Python 2.7**
  - `set_device_names(newName)` - change your device name
  - `get_device_name()` - return name of your device
  - `get_hostap_name()` - return name of your Access Point in AP mode
- - `get_status()` - set WiFi status. return value: `tuple(mode, network_info)`. Network info is a `dict('IP address', 'ssid', 'mac address')`
+ - `get_status()` - get WiFi status. return value: `tuple(mode, network_info)`. Network info is a `dict('IP address', 'ssid', 'mac address')`
  - `turn_on_wifi()` - turned on wifi through `rfkill block` command
  - `turn_off_wifi()` - turned on wifi through `rfkill unblock` command
  - `is_wifi_on()` - return value: `bool`
 
+ - `scan()` - scan networks. Only for client mode
+ - `get_scan_results()` - return list of available networks. Return value: `list[{'security': security, 'ssid': ssid, 'mac address': bssid}]`
  - `get_added_networks()` - return list of added networks. Return value: `list[{'security': security, 'ssid': ssid, 'connected': bool}]`
-
  - `add_network(dict{'security': security, 'ssid': ssid, 'password': psk, 'identity': identity})` - add new network.   
 **List of possible security protocols**:
     - 'open'
