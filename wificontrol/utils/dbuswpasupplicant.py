@@ -21,16 +21,21 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
+
 import dbus
+
 
 class ServiceError(Exception):
     pass
 
+
 class InterfaceError(Exception):
     pass
 
+
 class PropertyError(Exception):
     pass
+
 
 class WpaSupplicantDBus(object):
 
@@ -55,8 +60,21 @@ class WpaSupplicantDBus(object):
         except dbus.exceptions.DBusException as error:
             raise ServiceError(error)
 
-    def show_wpa_supplicant_properties(self):
-        return self.__get_properties()
+    def __get_property(self, property_name):
+        try:
+            obj = self._bus.get_object(self._BASE_NAME, self._BASE_PATH)
+            properties_interface = dbus.Interface(obj, dbus.PROPERTIES_IFACE)
+            return properties_interface.Get(self._BASE_NAME, property_name)
+        except dbus.exceptions.DBusException as error:
+            raise PropertyError(error)
+
+    def __set_property(self, property_name, property_value):
+        try:
+            obj = self._bus.get_object(self._BASE_NAME, self._BASE_PATH)
+            properties_interface = dbus.Interface(obj, dbus.PROPERTIES_IFACE)
+            properties_interface.Set(self._BASE_NAME, property_name, property_value)
+        except dbus.exceptions.DBusException as error:
+            raise PropertyError(error)
 
     def get_interface(self, interface):
         wpa_interface = self.__get_interface()
@@ -64,6 +82,73 @@ class WpaSupplicantDBus(object):
             return wpa_interface.GetInterface(interface)
         except dbus.exceptions.DBusException as error:
             raise InterfaceError(error)
+
+    def create_interface(self, interface, bridge_interface=None, 
+        driver=None, config_file=None):
+        try:
+            wpa_interface = self.__get_interface()
+        except dbus.exceptions.DBusException as error:
+            raise ServiceError(error)
+        else:
+            args = {"Ifname": interface}
+            if bridge_interface is not None:
+                args["BridgeIfname"] = bridge_interface
+            if driver is not None:
+                args["Driver"] = driver
+            if config_file is not None:
+                args["ConfigFile"] = config_file
+            try:                
+                return wpa_interface.CreateInterface(dbus.Dictionary(args, 'sv'))
+            except dbus.exceptions.DBusException as error:
+                raise InterfaceError(error)
+
+    def remove_interface(self, iface_path):
+        try:
+            wpa_interface = self.__get_interface()
+        except dbus.exceptions.DBusException as error:
+            raise ServiceError(error)
+        else:     
+            try:
+                return wpa_interface.RemoveInterface(iface_path)
+            except dbus.exceptions.DBusException as error:
+                raise InterfaceError(error)
+
+    def get_debug_level(self):
+        return self.__get_property(dbus.String("DebugLevel"))
+
+    def set_debug_level(self, parameter):
+        self.__set_property(dbus.String("DebugLevel"), dbus.String(parameter))
+
+    def get_debug_timestamp(self):
+        return self.__get_property(dbus.String("DebugTimestamp"))
+
+    def set_debug_level(self, parameter):
+        self.__set_property(dbus.String("DebugTimestamp"), dbus.Boolean(parameter))
+
+    def get_debug_show_keys(self):
+        return self.__get_property(dbus.String("DebugShowKeys"))
+
+    def set_debug_show_keys(self, parameter):
+        self.__set_property(dbus.String("DebugShowKeys"), dbus.Boolean(parameter))
+
+    def get_interfaces(self):
+        return self.__get_property(dbus.String("Interfaces"))
+
+    def get_EAP_methods(self):
+        return self.__get_property(dbus.String("EapMethods")) 
+
+    def get_capabilities(self):
+        return self.__get_property(dbus.String("Capabilities"))
+
+    def get_WFDIEs(self):
+        return self.__get_property(dbus.String("WFDIEs"))
+
+    def set_WFDIEs(self, parameter):
+        self.__set_property(dbus.String("WFDIEs"), dbus.Array(parameter, "y")) 
+
+    def show_wpa_supplicant_properties(self):
+        return self.__get_properties()
+
 
 class WpaSupplicantInterface(WpaSupplicantDBus):
 
@@ -295,7 +380,13 @@ class WpaSupplicantNetwork(WpaSupplicantDBus):
             return str(ssid).strip("\"")
 
 if __name__ == '__main__':
-    wifi = WpaSupplicantInterface('wlp6s0')
-    wifi.initialize()
-    bss_manager = WpaSupplicantBSS()
-    network_manager = WpaSupplicantNetwork()
+    # wifi = WpaSupplicantInterface('wlp6s0')
+    # wifi.initialize()
+    # bss_manager = WpaSupplicantBSS()
+    # network_manager = WpaSupplicantNetwork()
+
+    wpa = WpaSupplicantDBus()
+    wlp = wpa.get_interface('wlp6s0')
+    wpa.remove_interface(wlp)
+    new_wlp = wpa.create_interface("wlp6s0")
+    print(wpa.get_WFDIEs()) 
