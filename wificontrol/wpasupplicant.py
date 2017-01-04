@@ -23,7 +23,7 @@
 
 from wificommon import WiFi
 from threading import Thread, Event, Timer
-from utils import ConfigurationFileUpdater, NullFileUpdater
+from utils import CfgFileUpdater
 from utils import WpaSupplicantInterface, WpaSupplicantNetwork, WpaSupplicantBSS
 from utils import convert_to_wpas_network, convert_to_wificontrol_network, create_security
 from utils import FileError
@@ -46,10 +46,7 @@ class WpaSupplicant(WiFi):
         self.wpa_supplicant_interface = WpaSupplicantInterface(self.interface)
         self.wpa_bss_manager = WpaSupplicantBSS()
         self.wpa_network_manager = WpaSupplicantNetwork()
-        try:
-            self.config_updater = ConfigurationFileUpdater(self.wpa_supplicant_path)
-        except FileError:
-            self.config_updater = NullFileUpdater()
+        self.config_updater = CfgFileUpdater(self.wpa_supplicant_path)
 
         self.connection_thread = None
         self.connection_event = Event()

@@ -21,8 +21,10 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
+
 class FileError(Exception):
     pass
+
 
 class NetworkTemplate(object):
 
@@ -45,6 +47,17 @@ class NetworkTemplate(object):
 
         return self.network_template.format('\n'.join(network_parameters))
 
+
+def CfgFileUpdater(cfg_file_path="/etc/wpa_supplicant/wpa_supplicant.conf"):
+    try:
+        with open(cfg_file_path, 'r') as cfg_file:
+            pass
+    except IOError:
+        return NullFileUpdater()
+    else:
+        return ConfigurationFileUpdater(cfg_file_path)
+
+
 class NullFileUpdater(object):
     def __init__(self, config_file_path=None):
         self.head = None
@@ -57,8 +70,8 @@ class NullFileUpdater(object):
     def remove_network(self, network):
         pass
 
-class ConfigurationFileUpdater(object):
 
+class ConfigurationFileUpdater(object):
 
     def __init__(self, config_file_path="/etc/wpa_supplicant/wpa_supplicant.conf"):
 
@@ -71,13 +84,13 @@ class ConfigurationFileUpdater(object):
 
     def __initialise(self):
         try:
-            config_file = open(self.__config_file_path, 'r')
+            with open(self.__config_file_path, 'r') as config_file:
+               self.raw_file = config_file.read() 
         except IOError:
             raise FileError("No configuration file")
         else:
-            self.raw_file = config_file.read()
             self.__parse_file()
-            config_file.close()
+            
 
     def __parse_file(self):
         self.head = self.__get_header()
@@ -128,16 +141,15 @@ class ConfigurationFileUpdater(object):
         else:
             self.__update_config_file()
 
+
 if __name__ == '__main__':
-    try:
-        config_updater = ConfigurationFileUpdater('testfile.conf')
-    except FileError as error:
-        config_updater = NullFileUpdater()
+    config_updater = CfgFileUpdater('/etc/wpa_supplicant/wpa_supplicant.conf')
+    print(type(config_updater))
 
     for network in config_updater.networks:
 
         print(NetworkTemplate(network))
 
-    new_network = {"ssid": "myssid", "psk": "mypassword", "key_mgmt": "WPA-PSK"}
-    config_updater.addNetwork(new_network)
-    config_updater.remove_network(new_network)
+    # new_network = {"ssid": "myssid", "psk": "mypassword", "key_mgmt": "WPA-PSK"}
+    # config_updater.add_network(new_network)
+    # config_updater.remove_network(new_network)
