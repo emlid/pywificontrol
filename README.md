@@ -23,7 +23,7 @@ Wificontrol was tested on Intel Edison with Yocto image
 `sysdmanager`
 `netifaces`
 
-The package was tested with **Python 2.7**
+The package was tested with **Python 2.7** and **Python 3.5**
 
 ### Install
 
