@@ -22,8 +22,8 @@
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from configs import wificontrol, wpas, hotspot, wifi
 from sysdmanager import SystemdManager
+from .configs import wificontrol, wpas, hotspot, wifi
 
 restart_mdns_cmd = "systemctl restart mdns.service && sleep 2"
 rfkill_block_cmd = "rfkill block wifi"

@@ -26,7 +26,7 @@ import unittest
 import platform
 import subprocess
 from random import randint
-from fakewifi import fakeWpaSupplicant as WpaSupplicant 
+from .fakewifi import fakeWpaSupplicant as WpaSupplicant 
 
 class ValidationError(Exception):
     pass
