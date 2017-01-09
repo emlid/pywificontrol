@@ -41,7 +41,7 @@ class WpaSupplicant(WiFi):
         self.wpa_supplicant_path = wpas_config
         self.p2p_supplicant_path = p2p_config
 
-        if ("bin/wpa_supplicant" not in self.execute_command("whereis wpa_supplicant")):
+        if (b'bin/wpa_supplicant' not in self.execute_command("whereis wpa_supplicant")):
             raise OSError('No WPA_SUPPLICANT servise')
 
         self.wpa_supplicant_interface = WpaSupplicantInterface(self.interface)

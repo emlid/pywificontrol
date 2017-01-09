@@ -25,7 +25,7 @@ import os
 import unittest
 import platform
 import subprocess
-from .fakewifi import fakeWiFiControl as WiFiControl
+from fakewifi import fakeWiFiControl as WiFiControl
 
 class WiFiControlTest(unittest.TestCase):
 

@@ -123,7 +123,7 @@ class ConfigurationFileUpdater(object):
                 return network
 
     def __update_config_file(self):
-        with open(self.__config_file_path, 'w', 0) as config_file:
+        with open(self.__config_file_path, 'w') as config_file:
             config_file.write(self.__create_config_file())
 
     def add_network(self, network):

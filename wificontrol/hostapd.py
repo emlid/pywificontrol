@@ -36,7 +36,7 @@ class HostAP(WiFi):
         self.hostapd_path = hostapd_config
         self.hostname_path = hostname_config
 
-        if ("bin/hostapd" not in self.execute_command("whereis hostapd")):
+        if (b'bin/hostapd' not in self.execute_command("whereis hostapd")):
             raise OSError('No HOSTAPD servise')
 
         self.started = lambda: self.sysdmanager.is_active("hostapd.service")

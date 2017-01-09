@@ -26,7 +26,7 @@ import unittest
 import platform
 import subprocess
 from random import randint
-from .fakewifi import fakeHostAP as HostAP
+from fakewifi import fakeHostAP as HostAP
 
 class HostAPTest(unittest.TestCase):
 

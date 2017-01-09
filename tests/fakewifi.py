@@ -23,7 +23,7 @@
 
 import os
 from sysdmanager import SystemdManager
-from .configs import wificontrol, wpas, hotspot, wifi
+from configs import wificontrol, wpas, hotspot, wifi
 
 restart_mdns_cmd = "systemctl restart mdns.service && sleep 2"
 rfkill_block_cmd = "rfkill block wifi"
