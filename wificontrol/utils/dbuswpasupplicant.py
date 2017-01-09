@@ -380,13 +380,10 @@ class WpaSupplicantNetwork(WpaSupplicantDBus):
             return str(ssid).strip("\"")
 
 if __name__ == '__main__':
-    # wifi = WpaSupplicantInterface('wlp6s0')
-    # wifi.initialize()
-    # bss_manager = WpaSupplicantBSS()
-    # network_manager = WpaSupplicantNetwork()
+    wifi = WpaSupplicantInterface('wlp6s0')
+    wifi.initialize()
+    bss_manager = WpaSupplicantBSS()
+    network_manager = WpaSupplicantNetwork()
 
-    wpa = WpaSupplicantDBus()
-    wlp = wpa.get_interface('wlp6s0')
-    wpa.remove_interface(wlp)
-    new_wlp = wpa.create_interface("wlp6s0")
-    print(wpa.get_WFDIEs()) 
+    cur_net = wifi.get_current_network()
+    print(network_manager.get_network_SSID(cur_net))

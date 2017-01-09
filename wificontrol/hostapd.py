@@ -21,7 +21,9 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
-from wificommon import WiFi
+
+from .wificommon import WiFi
+
 
 class HostAP(WiFi):
     hostapd_control = lambda self, action: "systemctl {} hostapd.service && sleep 2".format(action)
@@ -66,6 +68,7 @@ class HostAP(WiFi):
 
     def get_host_name(self):
         return self.re_search("^.*", self.hostname_path)
+
 
 if __name__ == '__main__':
     hotspot = HostAP('wlp6s0')

@@ -21,9 +21,11 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
-from hostapd import HostAP
-from wificommon import WiFi
-from wpasupplicant import WpaSupplicant
+
+from .hostapd import HostAP
+from .wificommon import WiFi
+from .wpasupplicant import WpaSupplicant
+
 
 class WiFiControl(object):
 
@@ -118,6 +120,7 @@ class WiFiControl(object):
     def revert_on_connect_failure(self, result):
         if not result:
             self.start_host_mode()
+
 
 if __name__ == '__main__':
     wificontrol = WiFiControl('wlp6s0')

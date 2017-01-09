@@ -147,9 +147,5 @@ if __name__ == '__main__':
     print(type(config_updater))
 
     for network in config_updater.networks:
-
         print(NetworkTemplate(network))
 
-    # new_network = {"ssid": "myssid", "psk": "mypassword", "key_mgmt": "WPA-PSK"}
-    # config_updater.add_network(new_network)
-    # config_updater.remove_network(new_network)

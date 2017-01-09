@@ -21,13 +21,14 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
-from wificommon import WiFi
+from .wificommon import WiFi
+from .utils import CfgFileUpdater
+from .utils import WpaSupplicantInterface, WpaSupplicantNetwork, WpaSupplicantBSS
+from .utils import convert_to_wpas_network, convert_to_wificontrol_network, create_security
+from .utils import FileError
+from .utils import ServiceError, InterfaceError, PropertyError
 from threading import Thread, Event, Timer
-from utils import CfgFileUpdater
-from utils import WpaSupplicantInterface, WpaSupplicantNetwork, WpaSupplicantBSS
-from utils import convert_to_wpas_network, convert_to_wificontrol_network, create_security
-from utils import FileError
-from utils import ServiceError, InterfaceError, PropertyError
+
 
 class WpaSupplicant(WiFi):
     wpas_control = lambda self, action: "systemctl {} wpa_supplicant.service && sleep 2".format(action)
@@ -144,9 +145,9 @@ class WpaSupplicant(WiFi):
 
     def get_bss_network_info(self, bss):
         return {
-        "ssid": self.wpa_bss_manager.get_SSID(bss),
-        "mac address": self.wpa_bss_manager.get_BSSID(bss),
-        "security": self.get_security(bss)
+            "ssid": self.wpa_bss_manager.get_SSID(bss),
+            "mac address": self.wpa_bss_manager.get_BSSID(bss),
+            "security": self.get_security(bss)
         }
 
     def get_security(self, bss_path):
@@ -249,6 +250,7 @@ class WpaSupplicant(WiFi):
                 self.stop_connecting()
             except AttributeError:
                 pass
+
 
 if __name__ == '__main__':
     wifi = WpaSupplicant('wlp6s0')

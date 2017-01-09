@@ -21,6 +21,45 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
+
+def create_security(proto, key_mgmt, group):
+    if not proto:
+        return 'open'
+    if not key_mgmt:
+        if "wep" in group:
+            return 'wep'
+        else:
+            return None
+    else:
+        if "wpa-psk" in key_mgmt:
+            if proto == "WPA":
+                return "wpapsk"
+            elif proto == "RSN":
+                return "wpa2psk"
+            else:
+                return None
+        elif "wpa-eap" in key_mgmt:
+            return 'wpaeap'
+        else:
+            return None
+
+
+def convert_to_wpas_network(network):
+    return dict(WpasNetworkConverter(network))
+
+
+def convert_to_wificontrol_network(network, current_network):
+    wifinetwork = dict(WifiControlNetworkConverter(network))
+    try:
+        if wifinetwork['ssid'] == current_network['ssid']:
+            wifinetwork.update(current_network)
+            wifinetwork["connected"] = True
+    except TypeError:
+        pass
+    finally:
+        return wifinetwork
+
+
 class WpasNetworkConverter(object):
     def __init__(self, network_dict):
 
@@ -66,6 +105,7 @@ class WpasNetworkConverter(object):
             yield "ssid", "{}".format(self.name)
             yield "psk", "{}".format(self.password)
 
+
 class WifiControlNetworkConverter(object):
     def __init__(self, network_dict):
 
@@ -100,40 +140,6 @@ class WifiControlNetworkConverter(object):
             yield "security", "NONE"
         yield "connected", False
 
-def create_security(proto, key_mgmt, group):
-    if not proto:
-        return 'open'
-    if not key_mgmt:
-        if "wep" in group:
-            return 'wep'
-        else:
-            return None
-    else:
-        if "wpa-psk" in key_mgmt:
-            if proto == "WPA":
-                return "wpapsk"
-            elif proto == "RSN":
-                return "wpa2psk"
-            else:
-                return None
-        elif "wpa-eap" in key_mgmt:
-            return 'wpaeap'
-        else:
-            return None
-
-def convert_to_wpas_network(network):
-    return dict(WpasNetworkConverter(network))
-
-def convert_to_wificontrol_network(network, current_network):
-    wifinetwork = dict(WifiControlNetworkConverter(network))
-    try:
-        if wifinetwork['ssid'] == current_network['ssid']:
-            wifinetwork.update(current_network)
-            wifinetwork["connected"] = True
-    except TypeError:
-        pass
-    finally:
-        return wifinetwork
 
 if __name__ == '__main__':
     network = {'ssid': "MySSID", 'password': "NewPassword", 'security': "wpaeap", 'identity': "alex@example.com"}
