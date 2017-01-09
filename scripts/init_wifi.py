@@ -21,10 +21,12 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
+
 import sys
 from wificontrol import WiFiControl, WiFiControlError
 
-def ConnectionCallback(result, wific):
+
+def connection_callback(result, wific):
     if not result:
         print("Can't connect to any network.")
         print("Start HOSTAP mode")
@@ -40,6 +42,7 @@ def ConnectionCallback(result, wific):
         status = wific.get_status()[1]
         print("Connected to {}".format(status['ssid']))
         sys.exit(0)
+
 
 if __name__ == "__main__":
     try:
@@ -63,4 +66,4 @@ if __name__ == "__main__":
                 sys.exit(10)
         else:
             print("Start connecting to networks")
-            rwc.start_connecting(None, callback=ConnectionCallback, args = rwc)
+            rwc.start_connecting(None, callback=connection_callback, args=rwc)
