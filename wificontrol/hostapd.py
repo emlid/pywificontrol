@@ -22,16 +22,16 @@
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from .wificommon import WiFi
+from wificommon import WiFi
 
 
 class HostAP(WiFi):
     hostapd_control = lambda self, action: "systemctl {} hostapd.service && sleep 2".format(action)
 
     def __init__(self, interface,
-        hostapd_config="/etc/hostapd/hostapd.conf", 
-        hostname_config='/etc/hostname'):
-        
+                 hostapd_config="/etc/hostapd/hostapd.conf",
+                 hostname_config='/etc/hostname'):
+
         super(HostAP, self).__init__(interface)
         self.hostapd_path = hostapd_config
         self.hostname_path = hostname_config

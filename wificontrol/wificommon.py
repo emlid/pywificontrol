@@ -26,11 +26,12 @@ import subprocess
 from sysdmanager import SystemdManager
 from netifaces import ifaddresses, AF_INET, AF_LINK
 
+
 class WiFiControlError(Exception):
     pass
 
-class WiFi(object):
 
+class WiFi(object):
     restart_mdns = "systemctl restart mdns.service && sleep 2"
     rfkill_wifi_control = lambda self, action: "rfkill {} wifi".format(action)
 
@@ -41,10 +42,10 @@ class WiFi(object):
     def restart_dns(self):
         self.execute_command(self.restart_mdns)
 
-    def block():
+    def block(self):
         self.execute_command(self.rfkill_wifi_control("block"))
 
-    def unblock():
+    def unblock(self):
         self.execute_command(self.rfkill_wifi_control("unblock"))
 
     def get_device_ip(self):
@@ -79,6 +80,7 @@ class WiFi(object):
             error_message += "Return code: {}\n".format(error.returncode)
             error_message += "Command: {}".format(args)
             raise WiFiControlError(error_message)
+
 
 if __name__ == '__main__':
     wifi = WiFi('wlp6s0')

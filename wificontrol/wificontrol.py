@@ -22,18 +22,21 @@
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from .hostapd import HostAP
-from .wificommon import WiFi
-from .wpasupplicant import WpaSupplicant
+from hostapd import HostAP
+from wificommon import WiFi
+from wpasupplicant import WpaSupplicant
 
 
 class WiFiControl(object):
+    WPA_STATE = 'wpa_supplicant'
+    HOST_STATE = 'hostapd'
+    OFF_STATE = 'wifi_off'
 
     def __init__(self, interface='wlan0',
-        wpas_config="/etc/wpa_supplicant/wpa_supplicant.conf",
-        p2p_config="/etc/wpa_supplicant/p2p_supplicant.conf",
-        hostapd_config="/etc/hostapd/hostapd.conf",
-        hostname_config='/etc/hostname'):
+                 wpas_config="/etc/wpa_supplicant/wpa_supplicant.conf",
+                 p2p_config="/etc/wpa_supplicant/p2p_supplicant.conf",
+                 hostapd_config="/etc/hostapd/hostapd.conf",
+                 hostname_config='/etc/hostname'):
 
         self.wifi = WiFi(interface)
         self.wpasupplicant = WpaSupplicant(interface, wpas_config, p2p_config)
@@ -50,15 +53,16 @@ class WiFiControl(object):
             self.wpasupplicant.start()
 
     def turn_on_wifi(self):
-        self.wifi.unblock()
-        self.wpasupplicant.start()
+        if self.get_state() == self.OFF_STATE:
+            self.wifi.unblock()
+            self.wpasupplicant.start()
 
     def turn_off_wifi(self):
         self.hotspot.stop()
-        self.wpasupplicant.start()
+        self.wpasupplicant.stop()
         self.wifi.block()
 
-    def is_wifi_on(self):
+    def get_wifi_turned_on(self):
         return (self.wpasupplicant.started() or self.hotspot.started())
 
     def set_hostap_password(self, password):
@@ -77,7 +81,13 @@ class WiFiControl(object):
         self.wifi.restart_dns()
 
     def get_status(self):
-        return (self.get_state(), self.wpasupplicant.get_status())
+        state = self.get_state()
+        wpa_status = None
+
+        if state == self.WPA_STATE:
+            wpa_status = self.wpasupplicant.get_status()
+
+        return state, wpa_status
 
     def get_added_networks(self):
         return self.wpasupplicant.get_added_networks()
@@ -111,15 +121,22 @@ class WiFiControl(object):
         self.wpasupplicant.disconnect()
 
     def get_state(self):
+        state = self.OFF_STATE
+
         if self.wpasupplicant.started():
-            return "wpa_supplicant"
-        if self.hotspot.started():
-            return "hostapd"
-        return "wifi_off"
+            state = self.WPA_STATE
+        elif self.hotspot.started():
+            state = self.HOST_STATE
+
+        return state
 
     def revert_on_connect_failure(self, result):
         if not result:
             self.start_host_mode()
+
+    def reconnect(self, result, network):
+        if not result:
+            self.start_connecting(network)
 
 
 if __name__ == '__main__':
