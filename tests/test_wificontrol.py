@@ -21,89 +21,147 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
-import unittest
-import platform
-import subprocess
-from fakewifi import fakeWiFiControl as WiFiControl
+import pytest
+from threading import Event
+from wificontrol import WiFiControl
+from tests import edison
 
-class WiFiControlTest(unittest.TestCase):
 
-    not_edison = ("edison" not in platform.platform(), "Not suppoted in this platform")
+@pytest.fixture
+def valid_network():
+    network = {
+        'ssid': "EML33T2",
+        'password': "emrooftop",
+        'security': "wpa2psk",
+        'identity': ""
+    }
+    return network
+
+
+@pytest.fixture
+def invalid_network():
+    network = {
+        'ssid': "somenetwork",
+        'password': "password",
+        'security': "wpa2psk",
+        'identity': "ivan@example.com"
+    }
+    return network
+
+
+@edison
+class TestWiFiControl:
+    CALLBACK_TIMEOUT = 15
+
+    def setup_method(self):
+        self.connection_result = 0
+        self.callback_event = Event()
+        self.manager = WiFiControl()
+
+    def teardown_method(self):
+        pass
 
     def hostapd_callback(self, result):
         if not result:
-            print("Cant connect to network")
-            print("Starting hostapd")
             self.manager.start_host_mode()
             self.connection_result = -1
         else:
             self.connection_result = 1
 
-    def setUp(self):
-        self.connection_result = 0
-        self.manager = WiFiControl()
+        self.callback_event.set()
 
-    def tearDown(self):
-        pass
+    def wait_for_callback(self, result):
+        self.callback_event.wait(self.CALLBACK_TIMEOUT)
+        assert self.connection_result == result
 
-    @unittest.skipIf(*not_edison)
     def test_start_hotspot(self):
         self.manager.start_host_mode()
+        assert self.manager.get_state() == self.manager.HOST_STATE
 
-    @unittest.skipIf(*not_edison)
     def test_start_client(self):
         self.manager.start_client_mode()
+        assert self.manager.get_state() == self.manager.WPA_STATE
 
-    @unittest.skipIf(*not_edison)
-    def test_hotspot_after_connect_failure(self):
-        test_network = {
-            'ssid': "somenetwork",
-            'password': "password",
-            'security': "wpa2psk",
-            'identity': "ivan@example.com"
-        }
-        self.manager.add_network(test_network)
-        self.manager.start_connecting(test_network, timeout=1, callback=self.hostapd_callback)
-        while(self.connection_result == 0):
-            pass
-        self.assertEqual(self.connection_result, -1)
-        self.manager.remove_network(test_network)
+    def test_wifi_turn_off(self):
+        self.manager.turn_off_wifi()
+        assert self.manager.get_state() == self.manager.OFF_STATE
+        assert self.manager.get_wifi_turned_on() is False
 
-    @unittest.skipIf(*not_edison)
-    def test_connect_to_reachable_network_from_hostap(self):
+    def test_wifi_turn_on(self):
+        self.manager.turn_off_wifi()
+        self.manager.turn_on_wifi()
+
+        assert self.manager.get_wifi_turned_on() is True
+
+    def test_network_add(self, valid_network):
+        self.manager.add_network(valid_network)
+        added_networks = self.manager.get_added_networks()
+
+        assert valid_network['ssid'] in [network['ssid'] for network in added_networks]
+
+    def test_network_remove(self, valid_network):
+        self.test_network_add(valid_network)
+        self.manager.remove_network(valid_network)
+
+        added_networks = self.manager.get_added_networks()
+        assert valid_network['ssid'] not in [network['ssid'] for network in added_networks]
+
+    def test_hotspot_after_connect_failure(self, invalid_network):
+        self.manager.add_network(invalid_network)
+        self.manager.start_connecting(invalid_network, timeout=1, callback=self.hostapd_callback)
+
+        self.wait_for_callback(-1)
+
+        self.manager.remove_network(invalid_network)
+
+    def test_connect_to_reachable_network_from_hostap(self, valid_network):
         self.manager.start_host_mode()
-        test_network = {
-            'ssid': "EML33T5",
-            'password': "emrooftop",
-            'security': "wpa2psk",
-            'identity': ""
-        }
-        self.manager.add_network(test_network)
-        self.manager.start_connecting(test_network, callback=self.hostapd_callback)
-        while(self.connection_result == 0):
-            pass
-        self.assertEqual(self.connection_result, 1)
 
-    @unittest.skipIf(*not_edison)
+        self.manager.add_network(valid_network)
+        self.manager.start_connecting(valid_network, callback=self.hostapd_callback)
+
+        self.wait_for_callback(1)
+
+        state, status = self.manager.get_status()
+
+        assert state == self.manager.WPA_STATE
+        assert status['ssid'] == valid_network['ssid']
+
     def test_change_names(self):
         old_name = self.manager.get_device_name()
         new_name = "TestCaseName"
         mac_end = self.manager.wifi.get_device_mac()[-6:]
 
         self.manager.set_device_names(new_name)
-        self.assertEqual(self.manager.get_device_name(), new_name)
-        self.assertEqual(self.manager.get_hostap_name(), new_name+mac_end)
+        assert self.manager.get_device_name() == new_name
+        assert self.manager.get_hostap_name() == new_name + mac_end
 
         self.manager.set_device_names(old_name)
-        self.assertEqual(self.manager.get_device_name(), old_name)
-        self.assertEqual(self.manager.get_hostap_name(), old_name+mac_end)
+        assert self.manager.get_device_name() == old_name
+        assert self.manager.get_hostap_name() == old_name + mac_end
 
-    @unittest.skipIf(*not_edison)
     def test_connect_to_any_network(self):
         self.manager.start_client_mode()
         self.manager.start_connecting(None, callback=self.hostapd_callback)
-        while(self.connection_result == 0):
-            pass
-        self.assertEqual(self.connection_result, 1)
 
+        self.wait_for_callback(1)
+
+        state, status = self.manager.get_status()
+
+        assert state == self.manager.WPA_STATE
+        assert status['ssid']
+
+    def test_scan_function(self):
+        self.manager.start_client_mode()
+        self.manager.scan()
+        scan_results = self.manager.get_scan_results()
+        assert isinstance(scan_results, list)
+
+    def test_disconnect_from_network(self, valid_network):
+        self.test_connect_to_reachable_network_from_hostap(valid_network)
+        self.manager.disconnect()
+
+        state, status = self.manager.get_status()
+
+        assert state == self.manager.WPA_STATE
+        assert status is None

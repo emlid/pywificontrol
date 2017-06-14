@@ -1,6 +1,7 @@
 import dbus
 import dbus.service
 import dbus.mainloop.glib
+import signal
 from wificontrol import WiFiControl
 from reachstatus import StateClient
 
@@ -20,7 +21,11 @@ SYSTEMD_MANAGER_DBUS_IFACE = 'org.freedesktop.systemd1.Manager'
 HOSTAPD_DBUS_UNIT_OPATH = '/org/freedesktop/systemd1/unit/hostapd_2eservice'
 
 
-class WiFiMonitor(dbus.service.Object):
+class WiFiMonitorError(Exception):
+    pass
+
+
+class WiFiMonitor(object):
     CLIENT_STATE = 'CLIENT'
     HOST_STATE = 'HOST'
     SCAN_STATE = 'SCAN'
@@ -55,12 +60,18 @@ class WiFiMonitor(dbus.service.Object):
         self.current_state = None
         self.current_ssid = None
 
+        self._initialize()
+
     def _initialize(self):
-        systemd_obj = self.bus.get_object(SYSTEMD_DBUS_SERVICE,
-                                          SYSTEMD_DBUS_OPATH)
-        self.sysd_manager = dbus.Interface(systemd_obj,
-                                           dbus_interface=SYSTEMD_MANAGER_DBUS_IFACE)
-        self.sysd_manager.Subscribe()
+        try:
+            systemd_obj = self.bus.get_object(SYSTEMD_DBUS_SERVICE,
+                                              SYSTEMD_DBUS_OPATH)
+            self.sysd_manager = dbus.Interface(systemd_obj,
+                                               dbus_interface=SYSTEMD_MANAGER_DBUS_IFACE)
+            self.sysd_manager.Subscribe()
+
+        except dbus.exceptions.DBusException as error:
+            raise WiFiMonitorError(error)
 
         self.bus.add_signal_receiver(self._wpa_props_changed,
                                      dbus_interface=WPAS_INTERFACE_DBUS_IFACE,
@@ -102,7 +113,6 @@ class WiFiMonitor(dbus.service.Object):
             self.current_state = state
             self._execute_state_event(state)
             self._execute_callbacks(state)
-            print self.current_state
 
     def _execute_state_event(self, state):
         if state == self.CLIENT_STATE:
@@ -116,7 +126,6 @@ class WiFiMonitor(dbus.service.Object):
         if self._ssid_updated():
             event = self.SUCCESS_EVENT
 
-        print event
         self._execute_callbacks(event)
 
     def _ssid_updated(self):
@@ -150,21 +159,35 @@ class WiFiMonitor(dbus.service.Object):
                 callback(*args)
 
     def run(self):
-        self._initialize()
         self._mainloop.run()
+
+    def shutdown(self):
+        self._deinitialize()
+        self._mainloop.quit()
+
+    def _deinitialize(self):
+        try:
+            self.sysd_manager.Unsubscribe()
+        except dbus.exceptions.DBusException as error:
+            raise WiFiMonitorError(error)
 
 
 def main():
+    def handler(signum, frame):
+        wifi.shutdown()
+
     wifi = WiFiMonitor()
 
     wifi.register_callback(wifi.HOST_STATE, StateClient.set_network_state, ('hotspot',))
     wifi.register_callback(wifi.CLIENT_STATE, StateClient.set_network_state, ('client',))
     wifi.register_callback(wifi.OFF_STATE, StateClient.set_network_state, ('disabled',))
     wifi.register_callback(wifi.SCAN_STATE, StateClient.set_network_state, ('scan',))
-    wifi.register_callback(wifi.FAILED_STATE, StateClient.set_network_state, ('disabled',))
     wifi.register_callback(wifi.REVERT_EVENT, StateClient.send_notification, ('connection_failed',))
     wifi.register_callback(wifi.SUCCESS_EVENT, StateClient.send_notification,
                            ('connection_success',))
+
+    signal.signal(signal.SIGINT, handler)
+    signal.signal(signal.SIGTERM, handler)
 
     wifi.run()
 

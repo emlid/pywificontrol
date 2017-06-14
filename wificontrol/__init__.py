@@ -1,4 +1,3 @@
-from .wificontrol import WiFiControl
-from .wificommon import WiFiControlError
-
-__all__ = ['WiFiControl', 'WiFiControlError']
+from wificontrol import WiFiControl
+from wificommon import WiFiControlError
+from wifimonitor import WiFiMonitor, WiFiMonitorError
