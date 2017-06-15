@@ -4,6 +4,21 @@ import mock
 from wificontrol import WiFiMonitor, WiFiControl
 
 
+class FakeWiFiControl(WiFiControl):
+    def __init__(self):
+        self.state = self.HOST_STATE
+        self.status = {}
+
+    def get_state(self):
+        return self.state
+
+    def get_status(self):
+        return self.state, self.status
+
+    def set_ssid(self, ssid):
+        self.status['ssid'] = ssid
+
+
 @pytest.fixture
 def scanning_state():
     state = {
@@ -35,21 +50,6 @@ def host_mode_state():
         'SubState': 'running'
     }
     return '', state, ''
-
-
-class FakeWiFiControl(WiFiControl):
-    def __init__(self):
-        self.state = self.HOST_STATE
-        self.status = {}
-
-    def get_state(self):
-        return self.state
-
-    def get_status(self):
-        return self.state, self.status
-
-    def set_ssid(self, ssid):
-        self.status['ssid'] = ssid
 
 
 class FakeWifiMonitor(WiFiMonitor):

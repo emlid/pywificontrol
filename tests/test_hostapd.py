@@ -22,8 +22,6 @@
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import platform
-import pytest
 from random import randint
 from wificontrol.hostapd import HostAP
 from tests import edison
@@ -33,13 +31,10 @@ from tests import edison
 class TestHostAP:
     @classmethod
     def setup_class(cls):
-        if "Ubuntu" in platform.platform():
-            cur_path = os.getcwd()
-            hostapd_path = cur_path + "/tests/test_files/hostapd.conf"
-            hostname_path = cur_path + "/tests/test_files/hostname"
-            cls.hotspot = HostAP('wlp6s0', hostapd_path, hostname_path)
-        else:
-            cls.hotspot = HostAP('wlan0')
+        cur_path = os.getcwd()
+        hostapd_path = cur_path + "/tests/test_files/hostapd.conf"
+        hostname_path = cur_path + "/tests/test_files/hostname"
+        cls.hotspot = HostAP('wlan0', hostapd_path, hostname_path)
 
     @classmethod
     def teardown_class(cls):
