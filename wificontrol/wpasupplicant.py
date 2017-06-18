@@ -32,7 +32,8 @@ from threading import Thread, Event, Timer
 
 
 class WpaSupplicant(WiFi):
-    wpas_control = lambda self, action: "systemctl {} wpa_supplicant.service && sleep 2".format(action)
+    wpas_control = lambda self, action: "systemctl {} wpa_supplicant.service && sleep 2".format(
+        action)
 
     def __init__(self, interface,
                  wpas_config="/etc/wpa_supplicant/wpa_supplicant.conf",
@@ -57,11 +58,14 @@ class WpaSupplicant(WiFi):
         self.connection_timer = None
         self.break_event = Event()
 
-        self.started = lambda: self.sysdmanager.is_active(
+    def started(self):
+        wpa_supplicant_started = self.sysdmanager.is_active(
             "wpa_supplicant.service")
 
-        if self.started():
+        if wpa_supplicant_started:
             self.wpa_supplicant_interface.initialize()
+
+        return wpa_supplicant_started
 
     def start(self):
         self.execute_command(self.wpas_control("start"))
