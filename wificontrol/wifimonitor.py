@@ -2,6 +2,7 @@ import dbus
 import dbus.service
 import dbus.mainloop.glib
 import signal
+import logging
 from wificontrol import WiFiControl
 from reachstatus import StateClient
 from daemon_tree import DaemonTreeObj, DaemonTreeError
@@ -11,6 +12,9 @@ try:
     from gi.repository import GObject
 except ImportError:
     import gobject as GObject
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
 
 DBUS_PROPERTIES_IFACE = 'org.freedesktop.DBus.Properties'
 
@@ -65,17 +69,10 @@ class WiFiMonitor(object):
         self.reconnect_worker = DaemonTreeObj(WORKER_NAME)
         self.disconnect_reason = None
 
-        self.register_callback(self.CLIENT_STATE, self._check_current_ssid)
-        self.register_callback(self.CLIENT_STATE, self._stop_reconnect_worker)
-
-        self.register_callback(self.HOST_STATE, self._clear_ssid)
-        self.register_callback(self.HOST_STATE, self._stop_reconnect_worker)
-
-        self.register_callback(self.OFF_STATE, self._check_disconnect_reason)
-
         try:
             self._initialize()
         except dbus.exceptions.DBusException as error:
+            logger.error(error)
             raise WiFiMonitorError(error)
 
     def _initialize(self):
@@ -95,7 +92,17 @@ class WiFiMonitor(object):
                                      signal_name="PropertiesChanged",
                                      path=HOSTAPD_DBUS_UNIT_OPATH)
 
+        self._register_local_callbacks()
         self._set_initial_state()
+
+    def _register_local_callbacks(self):
+        self.register_callback(self.CLIENT_STATE, self._check_current_ssid)
+        self.register_callback(self.CLIENT_STATE, self._stop_reconnect_worker)
+
+        self.register_callback(self.HOST_STATE, self._clear_ssid)
+        self.register_callback(self.HOST_STATE, self._stop_reconnect_worker)
+
+        self.register_callback(self.OFF_STATE, self._check_disconnect_reason)
 
     def _set_initial_state(self):
         state = self.wifi_manager.get_state()
@@ -129,11 +136,12 @@ class WiFiMonitor(object):
     def _check_current_ssid(self):
         event = self.REVERT_EVENT
 
-        if self._ssid_updated():
+        if self._ssid_updated:
             event = self.SUCCESS_EVENT
 
         self._execute_callbacks(event)
 
+    @property
     def _ssid_updated(self):
         _, status = self.wifi_manager.get_status()
 
@@ -152,9 +160,13 @@ class WiFiMonitor(object):
         self.current_ssid = None
 
     def _check_disconnect_reason(self):
-        if self.disconnect_reason == 0:
+        if self._station_went_offline:
             self._start_reconnect_worker()
         self.disconnect_reason = None
+
+    @property
+    def _station_went_offline(self):
+        return self.disconnect_reason in (0, 3)
 
     def _start_reconnect_worker(self):
         try:
@@ -181,7 +193,10 @@ class WiFiMonitor(object):
                 callback, args = callback
                 try:
                     callback(*args)
+                except WiFiMonitorError as error:
+                    logger.error(error)
                 except Exception as error:
+                    logger.error(error)
                     raise WiFiMonitorError(error)
 
     def run(self):
@@ -195,6 +210,7 @@ class WiFiMonitor(object):
         try:
             self.sysd_manager.Unsubscribe()
         except dbus.exceptions.DBusException as error:
+            logger.error(error)
             raise WiFiMonitorError(error)
 
 

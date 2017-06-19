@@ -22,6 +22,7 @@ class ReconnectWorker(object):
     def start_reconnection(self, ssid):
         if self.worker is None:
             self.worker = threading.Thread(target=self._reconnect, args=(ssid,))
+            self.worker.daemon = True
             self.worker.start()
 
     def _reconnect(self, ssid):
@@ -45,7 +46,7 @@ class ReconnectWorker(object):
 
     def _callback(self, result=None):
         if result:
-            self.stop_reconnection()
+            self.interrupt.set()
 
     def stop_reconnection(self):
         self.interrupt.set()
@@ -56,6 +57,7 @@ class ReconnectWorker(object):
 
 def main():
     def handler(signum, frame):
+        reconnect_worker.stop_reconnection()
         reconnect_svr.cancel()
 
     reconnect_worker = ReconnectWorker()

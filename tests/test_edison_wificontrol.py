@@ -111,6 +111,12 @@ class TestWiFiControl:
 
         assert valid_network['ssid'] in [network['ssid'] for network in added_networks]
 
+    def test_network_add_with_different_security(self, valid_network):
+        securities = ['wpapsk', 'wpa2psk', 'wep', 'open', 'wpaeap']
+        for security in securities:
+            valid_network['security'] = security
+            self.manager.add_network(valid_network)
+
     def test_network_remove(self, valid_network):
         self.test_network_add(valid_network)
         self.manager.remove_network(valid_network)

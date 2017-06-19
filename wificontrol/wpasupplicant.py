@@ -205,6 +205,7 @@ class WpaSupplicant(WiFi):
             if self.wpa_network_manager.get_network_SSID(network) == \
                     aim_network['ssid']:
                 return network
+            raise RuntimeError("Network with this ssid not found")
 
     def get_current_network_ssid(self):
         self.wpa_supplicant_interface.initialize()
