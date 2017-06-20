@@ -82,6 +82,12 @@ class TestWiFiControl:
 
         self.callback_event.set()
 
+    def assert_wpa_state(self, network):
+        state, status = self.manager.get_status()
+
+        assert state == self.manager.WPA_STATE
+        assert status['ssid'] == network['ssid']
+
     def wait_for_callback(self, result):
         self.callback_event.wait(self.CALLBACK_TIMEOUT)
         assert self.connection_result == result
@@ -140,10 +146,7 @@ class TestWiFiControl:
 
         self.wait_for_callback(1)
 
-        state, status = self.manager.get_status()
-
-        assert state == self.manager.WPA_STATE
-        assert status['ssid'] == valid_network['ssid']
+        self.assert_wpa_state(valid_network)
 
     def test_change_names(self):
         old_name = self.manager.get_device_name()
@@ -183,3 +186,22 @@ class TestWiFiControl:
 
         assert state == self.manager.WPA_STATE
         assert status is None
+
+    def test_reconnection(self, valid_network, invalid_network):
+        self.test_connect_to_reachable_network_from_hostap(valid_network)
+
+        self.assert_wpa_state(valid_network)
+
+        self.manager.revert_on_connect_failure = self.hostapd_callback
+        self.callback_event.clear()
+
+        self.manager.add_network(invalid_network)
+        self.manager.start_connecting(invalid_network,
+                                      callback=self.manager.reconnect,
+                                      args=(valid_network,))
+
+        self.wait_for_callback(1)
+
+        self.assert_wpa_state(valid_network)
+
+        self.manager.remove_network(invalid_network)

@@ -130,6 +130,24 @@ class TestWiFiControl:
         assert self.manager.wpasupplicant.stop.call_count == 1
         assert self.manager.hotspot.start.call_count == 1
 
+    def test_reconnection(self, ssid):
+        def start_connecting(result, callback, args, timeout):
+            self.manager.hotspot.started.return_value = False
+            if args:
+                callback({}, *args)
+            else:
+                callback(result)
+
+        self.manager.wpasupplicant.started = mock.Mock(return_value=False)
+        self.manager.wpasupplicant.start_connecting.side_effect = start_connecting
+
+        self.manager.hotspot.started = mock.Mock(return_value=True)
+
+        self.manager.start_connecting(ssid, callback=self.manager.reconnect,
+                                      args=(ssid,))
+
+        assert self.manager.wpasupplicant.start_connecting.call_count == 2
+
     def test_supplicant_functions(self):
         self.manager.scan()
         assert self.manager.wpasupplicant.scan.call_count == 1

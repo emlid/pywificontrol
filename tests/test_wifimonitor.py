@@ -72,9 +72,6 @@ class FakeWifiMonitor(WiFiMonitor):
         self.current_state = None
         self.current_ssid = None
 
-        self.reconnect_worker = mock.MagicMock()
-        self.disconnect_reason = None
-
         self._initialize()
 
 
@@ -155,26 +152,3 @@ class TestWiFiMonitor:
         self.monitor._wpa_props_changed(wpa_client_state)
         assert self.monitor.current_state == self.monitor.CLIENT_STATE
         stub_func.assert_called_with('revert')
-
-    def test_reconnection_worker_start(self, disconnect_state_on_station_del, wpa_client_state):
-        self.monitor.wifi_manager.set_ssid(self.ssid)
-
-        self.monitor._wpa_props_changed(wpa_client_state)
-        assert self.monitor.current_state == self.monitor.CLIENT_STATE
-
-        self.monitor._wpa_props_changed(disconnect_state_on_station_del)
-        assert self.monitor.current_state == self.monitor.OFF_STATE
-        assert self.monitor.disconnect_reason is None
-
-        kwargs = {'args': (self.monitor.current_ssid,)}
-        _call = mock.call('start_reconnection', **kwargs)
-        assert _call in self.monitor.reconnect_worker.method_calls
-
-    def test_reconnection_worker_stop(self, wpa_client_state, disconnect_state_on_station_del):
-        self.test_reconnection_worker_start(disconnect_state_on_station_del, wpa_client_state)
-
-        self.monitor._wpa_props_changed(wpa_client_state)
-        assert self.monitor.current_state == self.monitor.CLIENT_STATE
-
-        _call = mock.call('stop_reconnection')
-        assert _call in self.monitor.reconnect_worker.method_calls
