@@ -29,6 +29,8 @@ from utils import convert_to_wpas_network, convert_to_wificontrol_network, \
 from utils import FileError
 from utils import ServiceError, InterfaceError, PropertyError
 from threading import Thread, Event, Timer
+import time
+import sys
 
 
 class WpaSupplicant(WiFi):
@@ -75,16 +77,13 @@ class WpaSupplicant(WiFi):
         self.execute_command(self.wpas_control("stop"))
 
     def get_status(self):
-        network_params = dict()
-        try:
+        network_params = None
+        if self.started():
+            network_params = dict()
             network_params['ssid'] = self.get_current_network_ssid()
-        except PropertyError:
-            network_params = None
-        else:
             network_params['mac address'] = self.get_device_mac()
             network_params['IP address'] = self.get_device_ip()
-        finally:
-            return network_params
+        return network_params
 
     def scan(self):
         if self.started():
@@ -99,7 +98,9 @@ class WpaSupplicant(WiFi):
             return []
 
     def get_added_networks(self):
-        current_network = self.get_status()
+        current_network = None
+        if self.started():
+            current_network = self.get_status()
         return [convert_to_wificontrol_network(network, current_network) for
                 network in self.config_updater.networks]
 
@@ -223,6 +224,7 @@ class WpaSupplicant(WiFi):
         while self.wpa_supplicant_interface.get_state() != "completed":
             if not self.connection_event.is_set():
                 raise RuntimeError("Can't connect to network")
+            time.sleep(0.5)
 
     def check_correct_connection(self, aim_network):
         if aim_network is not None:

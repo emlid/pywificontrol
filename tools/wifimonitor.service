@@ -1,0 +1,12 @@
+[Unit]
+Description=Reach WiFi Status Monitor
+After=reach_status.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/wifimonitor
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

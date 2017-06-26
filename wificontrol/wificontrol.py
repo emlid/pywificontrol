@@ -46,11 +46,13 @@ class WiFiControl(object):
         if not self.hotspot.started():
             self.wpasupplicant.stop()
             self.hotspot.start()
+        return True
 
     def start_client_mode(self):
         if not self.wpasupplicant.started():
             self.hotspot.stop()
             self.wpasupplicant.start()
+        return True
 
     def turn_on_wifi(self):
         if self.get_state() == self.OFF_STATE:

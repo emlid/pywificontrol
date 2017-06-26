@@ -85,3 +85,40 @@ Network with WPA Enterprise security protocol has additional field 'identity'
 
 If you don't have hostapd or wpa_supplicant package, `__init__` function raise `OSError` exception.  
 WiFiControl raise `WiFiControlError` exception on failure.
+
+
+### WiFiMonitor 
+
+Monitor module which processing WPA Supplicant and HostAPD D-Bus signals
+
+#### Usage Example
+
+```python
+import signal
+from reachstatus import StateClient
+from wificontrol import WiFiMonitor
+
+
+def main():
+    def handler(signum, frame):
+        wifi_monitor.shutdown()
+
+    wifi_monitor = WiFiMonitor()
+
+    wifi_monitor.register_callback(wifi_monitor.HOST_STATE, StateClient.set_network_host_state)
+    wifi_monitor.register_callback(wifi_monitor.CLIENT_STATE, StateClient.set_network_client_state)
+    wifi_monitor.register_callback(wifi_monitor.OFF_STATE, StateClient.set_network_disabled_state)
+    wifi_monitor.register_callback(wifi_monitor.SCAN_STATE, StateClient.set_network_scan_state)
+    wifi_monitor.register_callback(wifi_monitor.REVERT_EVENT, StateClient.send_revert_connect_notify)
+    wifi_monitor.register_callback(wifi_monitor.SUCCESS_EVENT, StateClient.send_success_connect_notify)
+
+    signal.signal(signal.SIGINT, handler)
+    signal.signal(signal.SIGTERM, handler)
+
+    wifi_monitor.run()
+
+
+if __name__ == '__main__':
+    main()
+
+```

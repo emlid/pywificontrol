@@ -1,17 +1,14 @@
 import dbus
 import dbus.service
 import dbus.mainloop.glib
-import signal
 import logging
-from wificontrol import WiFiControl
-from reachstatus import StateClient
+from . import WiFiControl
 
 try:
     from gi.repository import GObject
 except ImportError:
     import gobject as GObject
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
 
 DBUS_PROPERTIES_IFACE = 'org.freedesktop.DBus.Properties'
@@ -61,14 +58,8 @@ class WiFiMonitor(object):
 
         self.callbacks = {}
 
-        self.current_state = None
+        self.current_state = self.OFF_STATE
         self.current_ssid = None
-
-        try:
-            self._initialize()
-        except dbus.exceptions.DBusException as error:
-            logger.error(error)
-            raise WiFiMonitorError(error)
 
     def _initialize(self):
         systemd_obj = self.bus.get_object(SYSTEMD_DBUS_SERVICE,
@@ -96,6 +87,7 @@ class WiFiMonitor(object):
 
     def _set_initial_state(self):
         state = self.wifi_manager.get_state()
+        logger.debug('Initiate WiFiMonitor with "{}" state'.format(state))
         self._process_new_state(state)
 
     def _host_props_changed(self, *args):
@@ -119,6 +111,7 @@ class WiFiMonitor(object):
     def _process_new_state(self, state):
         state = self.STATES.get(state)
         if state and self.current_state != state:
+            logger.debug('Switching to {} state'.format(state))
             self.current_state = state
             self._execute_callbacks(state)
 
@@ -137,6 +130,7 @@ class WiFiMonitor(object):
         try:
             ssid = status['ssid']
         except (KeyError, TypeError) as error:
+            logger.debug('Got empty network status')
             raise WiFiMonitorError(error)
 
         if self.current_ssid != ssid:
@@ -162,14 +156,21 @@ class WiFiMonitor(object):
                 try:
                     callback(*args)
                 except Exception as error:
-                    logger.error(error)
+                    logger.error('Callback {} execution error. {}'.format(callback.__name__, error))
 
     def run(self):
+        try:
+            self._initialize()
+        except dbus.exceptions.DBusException as error:
+            logger.error(error)
+            raise WiFiMonitorError(error)
+
         self._mainloop.run()
 
     def shutdown(self):
         self._deinitialize()
         self._mainloop.quit()
+        logger.info('WiFiMonitor stopped')
 
     def _deinitialize(self):
         try:
@@ -177,27 +178,3 @@ class WiFiMonitor(object):
         except dbus.exceptions.DBusException as error:
             logger.error(error)
             raise WiFiMonitorError(error)
-
-
-def main():
-    def handler(signum, frame):
-        wifi.shutdown()
-
-    wifi = WiFiMonitor()
-
-    wifi.register_callback(wifi.HOST_STATE, StateClient.set_network_state, ('hotspot',))
-    wifi.register_callback(wifi.CLIENT_STATE, StateClient.set_network_state, ('client',))
-    wifi.register_callback(wifi.OFF_STATE, StateClient.set_network_state, ('disabled',))
-    wifi.register_callback(wifi.SCAN_STATE, StateClient.set_network_state, ('scan',))
-    wifi.register_callback(wifi.REVERT_EVENT, StateClient.send_notification, ('connection_failed',))
-    wifi.register_callback(wifi.SUCCESS_EVENT, StateClient.send_notification,
-                           ('connection_success',))
-
-    signal.signal(signal.SIGINT, handler)
-    signal.signal(signal.SIGTERM, handler)
-
-    wifi.run()
-
-
-if __name__ == '__main__':
-    main()
