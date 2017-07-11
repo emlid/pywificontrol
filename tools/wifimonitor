@@ -2,7 +2,7 @@
 import signal
 from reachstatus import StateClient
 from wificontrol import WiFiMonitor
-from reach_setup import configure_logging
+from dev_utils import configure_logging
 
 
 def main():
