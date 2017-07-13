@@ -21,8 +21,11 @@
 # You should have received a copy of the GNU General Public License
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
+
+import os
 import re
 import subprocess
+
 from sysdmanager import SystemdManager
 from netifaces import ifaddresses, AF_INET, AF_LINK
 
@@ -71,6 +74,8 @@ class WiFi(object):
         old = re.search(pattern, data, re.MULTILINE).group(0)
         with open(file, 'w', 0) as data_file:
             data_file.write(data.replace(old, text))
+            data_file.flush()
+            os.fsync(data_file)
 
     def execute_command(self, args):
         try:
