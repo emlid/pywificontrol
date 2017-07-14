@@ -22,6 +22,9 @@
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
 
+import os
+
+
 class FileError(Exception):
     pass
 
@@ -90,7 +93,6 @@ class ConfigurationFileUpdater(object):
             raise FileError("No configuration file")
         else:
             self.__parse_file()
-            
 
     def __parse_file(self):
         self.head = self.__get_header()
@@ -125,6 +127,8 @@ class ConfigurationFileUpdater(object):
     def __update_config_file(self):
         with open(self.__config_file_path, 'w') as config_file:
             config_file.write(self.__create_config_file())
+            config_file.flush()
+            os.fsync(config_file)
 
     def add_network(self, network):
         if self.__findNetwork(network) is None:
@@ -148,4 +152,3 @@ if __name__ == '__main__':
 
     for network in config_updater.networks:
         print(NetworkTemplate(network))
-

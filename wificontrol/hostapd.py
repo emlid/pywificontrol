@@ -22,6 +22,7 @@
 # along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
 
 
+import os
 from wificommon import WiFi
 
 
@@ -61,6 +62,8 @@ class HostAP(WiFi):
         try:
             with open(self.hostname_path, 'w', 0) as hostname_file:
                 hostname_file.write(name + '\n')
+                hostname_file.flush()
+                os.fsync(hostname_file)
         except IOError:
             pass
         else:
