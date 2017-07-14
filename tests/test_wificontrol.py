@@ -1,109 +1,190 @@
-# wificontrol code is placed under the GPL license.
-# Written by Ivan Sapozhkov (ivan.sapozhkov@emlid.com)
-# Copyright (c) 2016, Emlid Limited
-# All rights reserved.
+import pytest
+import mock
+from wificontrol import WiFiControl
 
-# If you are interested in using wificontrol code as a part of a
-# closed source project, please contact Emlid Limited (info@emlid.com).
 
-# This file is part of wificontrol.
+@pytest.fixture
+def ssid():
+    network = {
+        'ssid': 'Test'
+    }
 
-# wificontrol is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+    return network
 
-# wificontrol is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
 
-# You should have received a copy of the GNU General Public License
-# along with wificontrol.  If not, see <http://www.gnu.org/licenses/>.
+class FakeWiFiControl(WiFiControl):
+    def __init__(self):
+        self.wifi = mock.MagicMock()
+        self.wpasupplicant = mock.MagicMock()
+        self.hotspot = mock.MagicMock()
 
-import os
-import unittest
-import platform
-import subprocess
-from fakewifi import fakeWiFiControl as WiFiControl
 
-class WiFiControlTest(unittest.TestCase):
+class TestWiFiControl:
+    def setup_method(self):
+        self.manager = FakeWiFiControl()
 
-    not_edison = ("edison" not in platform.platform(), "Not suppoted in this platform")
+    def test_host_mode(self):
+        self.manager.hotspot.started = mock.Mock(return_value=False)
 
-    def hostapd_callback(self, result):
-        if not result:
-            print("Cant connect to network")
-            print("Starting hostapd")
-            self.manager.start_host_mode()
-            self.connection_result = -1
-        else:
-            self.connection_result = 1
-
-    def setUp(self):
-        self.connection_result = 0
-        self.manager = WiFiControl()
-
-    def tearDown(self):
-        pass
-
-    @unittest.skipIf(*not_edison)
-    def test_start_hotspot(self):
         self.manager.start_host_mode()
 
-    @unittest.skipIf(*not_edison)
-    def test_start_client(self):
+        assert self.manager.wpasupplicant.stop.call_count == 1
+        assert self.manager.hotspot.started.call_count == 1
+        assert self.manager.hotspot.start.call_count == 1
+
+    def test_client_mode(self):
+        self.manager.wpasupplicant.started = mock.Mock(return_value=False)
+
         self.manager.start_client_mode()
 
-    @unittest.skipIf(*not_edison)
-    def test_hotspot_after_connect_failure(self):
-        test_network = {
-            'ssid': "somenetwork",
-            'password': "password",
-            'security': "wpa2psk",
-            'identity': "ivan@example.com"
-        }
-        self.manager.add_network(test_network)
-        self.manager.start_connecting(test_network, timeout=1, callback=self.hostapd_callback)
-        while(self.connection_result == 0):
-            pass
-        self.assertEqual(self.connection_result, -1)
-        self.manager.remove_network(test_network)
+        assert self.manager.hotspot.stop.call_count == 1
+        assert self.manager.wpasupplicant.started.call_count == 1
+        assert self.manager.wpasupplicant.start.call_count == 1
 
-    @unittest.skipIf(*not_edison)
-    def test_connect_to_reachable_network_from_hostap(self):
-        self.manager.start_host_mode()
-        test_network = {
-            'ssid': "EML33T5",
-            'password': "emrooftop",
-            'security': "wpa2psk",
-            'identity': ""
-        }
-        self.manager.add_network(test_network)
-        self.manager.start_connecting(test_network, callback=self.hostapd_callback)
-        while(self.connection_result == 0):
-            pass
-        self.assertEqual(self.connection_result, 1)
+    def test_wifi_turn_on(self):
+        self.manager.wpasupplicant.started = mock.Mock(return_value=False)
+        self.manager.hotspot.started = mock.Mock(return_value=False)
 
-    @unittest.skipIf(*not_edison)
-    def test_change_names(self):
-        old_name = self.manager.get_device_name()
-        new_name = "TestCaseName"
-        mac_end = self.manager.wifi.get_device_mac()[-6:]
+        self.manager.turn_on_wifi()
 
-        self.manager.set_device_names(new_name)
-        self.assertEqual(self.manager.get_device_name(), new_name)
-        self.assertEqual(self.manager.get_hostap_name(), new_name+mac_end)
+        assert self.manager.wifi.unblock.call_count == 1
+        assert self.manager.wpasupplicant.started.call_count == 1
+        assert self.manager.wpasupplicant.start.call_count == 1
 
-        self.manager.set_device_names(old_name)
-        self.assertEqual(self.manager.get_device_name(), old_name)
-        self.assertEqual(self.manager.get_hostap_name(), old_name+mac_end)
+        self.manager.wpasupplicant.started.return_value = True
+        assert self.manager.get_wifi_turned_on() is True
 
-    @unittest.skipIf(*not_edison)
-    def test_connect_to_any_network(self):
-        self.manager.start_client_mode()
-        self.manager.start_connecting(None, callback=self.hostapd_callback)
-        while(self.connection_result == 0):
-            pass
-        self.assertEqual(self.connection_result, 1)
+    def test_wifi_turn_off(self):
+        self.manager.wpasupplicant.started = mock.Mock(return_value=True)
+        self.manager.hotspot.started = mock.Mock(return_value=False)
 
+        self.manager.turn_off_wifi()
+
+        assert self.manager.wifi.block.call_count == 1
+        assert self.manager.hotspot.stop.call_count == 1
+        assert self.manager.wpasupplicant.stop.call_count == 1
+
+        self.manager.wpasupplicant.started.return_value = False
+        assert self.manager.get_wifi_turned_on() is False
+
+    def test_wifi_turn_on_if_wifi_is_on(self):
+        self.manager.wpasupplicant.started = mock.Mock(return_value=False)
+        self.manager.hotspot.started = mock.Mock(return_value=True)
+
+        self.manager.turn_on_wifi()
+
+        assert self.manager.wifi.unblock.call_count == 0
+        assert self.manager.wpasupplicant.started.call_count == 1
+        assert self.manager.hotspot.started.call_count == 1
+        assert self.manager.wpasupplicant.start.call_count == 0
+        assert self.manager.hotspot.start.call_count == 0
+
+    def test_network_add(self, ssid):
+        self.manager.add_network(ssid)
+        assert self.manager.wpasupplicant.add_network.is_called_once_with(ssid)
+
+    def test_network_remove(self, ssid):
+        self.manager.remove_network(ssid)
+        assert self.manager.wpasupplicant.remove_network.is_called_once_with(ssid)
+
+    def test_status_get(self, ssid):
+        self.manager.wpasupplicant.started = mock.Mock(return_value=False)
+        self.manager.hotspot.started = mock.Mock(return_value=True)
+
+        state, status = self.manager.get_status()
+
+        assert state == self.manager.HOST_STATE
+        assert status is None
+
+        self.manager.wpasupplicant.started.return_value = True
+        self.manager.hotspot.started.return_value = False
+
+        self.manager.wpasupplicant.get_status = mock.Mock(return_value=ssid)
+
+        state, status = self.manager.get_status()
+
+        assert state == self.manager.WPA_STATE
+        assert status == ssid
+
+    def test_start_connection(self, ssid):
+        def start_connecting(*args):
+            self.manager.hotspot.started.return_value = False
+            self.manager.revert_on_connect_failure(result=None)
+
+        self.manager.wpasupplicant.started = mock.Mock(return_value=False)
+        self.manager.wpasupplicant.start_connecting.side_effect = start_connecting
+
+        self.manager.hotspot.started = mock.Mock(return_value=True)
+
+        self.manager.start_connecting(ssid)
+
+        assert self.manager.wpasupplicant.started.call_count == 1
+        assert self.manager.hotspot.stop.call_count == 1
+        assert self.manager.wpasupplicant.start.call_count == 1
+
+        args = (ssid, self.manager.revert_on_connect_failure, None, 10)
+
+        assert self.manager.wpasupplicant.start_connecting.is_called_once_with(args)
+
+        assert self.manager.hotspot.started.call_count == 1
+        assert self.manager.wpasupplicant.stop.call_count == 1
+        assert self.manager.hotspot.start.call_count == 1
+
+    def test_reconnection(self, ssid):
+        def start_connecting(result, callback, args, timeout):
+            self.manager.hotspot.started.return_value = False
+            if args:
+                callback({}, *args)
+            else:
+                callback(result)
+
+        self.manager.wpasupplicant.started = mock.Mock(return_value=False)
+        self.manager.wpasupplicant.start_connecting.side_effect = start_connecting
+
+        self.manager.hotspot.started = mock.Mock(return_value=True)
+
+        self.manager.start_connecting(ssid, callback=self.manager.reconnect,
+                                      args=(ssid,))
+
+        assert self.manager.wpasupplicant.start_connecting.call_count == 2
+
+    def test_supplicant_functions(self):
+        self.manager.scan()
+        assert self.manager.wpasupplicant.scan.call_count == 1
+
+        self.manager.get_scan_results()
+        assert self.manager.wpasupplicant.get_scan_results.call_count == 1
+
+        self.manager.get_added_networks()
+        assert self.manager.wpasupplicant.get_added_networks.call_count == 1
+
+        self.manager.get_ip()
+        assert self.manager.wifi.get_device_ip.call_count == 1
+
+        self.manager.stop_connecting()
+        assert self.manager.wpasupplicant.stop_connecting.call_count == 1
+
+        self.manager.disconnect()
+        assert self.manager.wpasupplicant.disconnect.call_count == 1
+
+        self.manager.get_device_name()
+        assert self.manager.hotspot.get_host_name.call_count == 1
+
+        self.manager.get_hostap_name()
+        assert self.manager.hotspot.get_hostap_name.call_count == 1
+
+        name = 'test'
+        self.manager.set_device_names(name)
+        assert self.manager.wpasupplicant.set_p2p_name.call_count == 1
+        assert self.manager.wpasupplicant.set_p2p_name.is_called_once_with(name)
+
+        assert self.manager.hotspot.set_hostap_name.call_count == 1
+        assert self.manager.hotspot.set_hostap_name.is_called_once_with(name)
+
+        assert self.manager.hotspot.set_host_name.call_count == 1
+        assert self.manager.hotspot.set_host_name.is_called_once_with(name)
+
+        assert self.manager.wifi.restart_dns.call_count == 1
+
+        self.manager.set_hostap_password(name)
+        assert self.manager.hotspot.set_hostap_password.is_called_once_with(name)

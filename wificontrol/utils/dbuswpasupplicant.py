@@ -38,7 +38,6 @@ class PropertyError(Exception):
 
 
 class WpaSupplicantDBus(object):
-
     _BASE_NAME = "fi.w1.wpa_supplicant1"
     _BASE_PATH = "/fi/w1/wpa_supplicant1"
 
@@ -83,8 +82,8 @@ class WpaSupplicantDBus(object):
         except dbus.exceptions.DBusException as error:
             raise InterfaceError(error)
 
-    def create_interface(self, interface, bridge_interface=None, 
-        driver=None, config_file=None):
+    def create_interface(self, interface, bridge_interface=None,
+                         driver=None, config_file=None):
         try:
             wpa_interface = self.__get_interface()
         except dbus.exceptions.DBusException as error:
@@ -97,7 +96,7 @@ class WpaSupplicantDBus(object):
                 args["Driver"] = driver
             if config_file is not None:
                 args["ConfigFile"] = config_file
-            try:                
+            try:
                 return wpa_interface.CreateInterface(dbus.Dictionary(args, 'sv'))
             except dbus.exceptions.DBusException as error:
                 raise InterfaceError(error)
@@ -107,7 +106,7 @@ class WpaSupplicantDBus(object):
             wpa_interface = self.__get_interface()
         except dbus.exceptions.DBusException as error:
             raise ServiceError(error)
-        else:     
+        else:
             try:
                 return wpa_interface.RemoveInterface(iface_path)
             except dbus.exceptions.DBusException as error:
@@ -135,7 +134,7 @@ class WpaSupplicantDBus(object):
         return self.__get_property(dbus.String("Interfaces"))
 
     def get_EAP_methods(self):
-        return self.__get_property(dbus.String("EapMethods")) 
+        return self.__get_property(dbus.String("EapMethods"))
 
     def get_capabilities(self):
         return self.__get_property(dbus.String("Capabilities"))
@@ -144,14 +143,13 @@ class WpaSupplicantDBus(object):
         return self.__get_property(dbus.String("WFDIEs"))
 
     def set_WFDIEs(self, parameter):
-        self.__set_property(dbus.String("WFDIEs"), dbus.Array(parameter, "y")) 
+        self.__set_property(dbus.String("WFDIEs"), dbus.Array(parameter, "y"))
 
     def show_wpa_supplicant_properties(self):
         return self.__get_properties()
 
 
 class WpaSupplicantInterface(WpaSupplicantDBus):
-
     _INTERFACE_NAME = "fi.w1.wpa_supplicant1.Interface"
 
     def __init__(self, interface):
@@ -243,7 +241,7 @@ class WpaSupplicantInterface(WpaSupplicantDBus):
                 pass
             else:
                 raise ServiceError(error)
-        
+
     def reconnect(self):
         interface = self.__get_interface()
         try:
@@ -265,7 +263,7 @@ class WpaSupplicantInterface(WpaSupplicantDBus):
         return self.__get_property("CurrentBSS")
 
     def get_BSSs(self):
-        return self.__get_property("BSSs")        
+        return self.__get_property("BSSs")
 
     def get_interface_name(self):
         return self.__get_property("Ifname")
@@ -296,7 +294,6 @@ class WpaSupplicantInterface(WpaSupplicantDBus):
 
 
 class WpaSupplicantBSS(WpaSupplicantDBus):
-
     _BSS_NAME = "fi.w1.wpa_supplicant1.BSS"
 
     def __init__(self):
@@ -352,7 +349,6 @@ class WpaSupplicantBSS(WpaSupplicantDBus):
 
 
 class WpaSupplicantNetwork(WpaSupplicantDBus):
-
     _NETWORK_NAME = "fi.w1.wpa_supplicant1.Network"
 
     def __init__(self):
@@ -378,6 +374,7 @@ class WpaSupplicantNetwork(WpaSupplicantDBus):
             return str(ssid.decode('hex')).strip("\"")
         except TypeError:
             return str(ssid).strip("\"")
+
 
 if __name__ == '__main__':
     wifi = WpaSupplicantInterface('wlp6s0')
