@@ -35,7 +35,7 @@ def connection_callback(result, wific):
         except WiFiControlError as error:
             print(error)
             sys.exit(2)
-        else: 
+        else:
             print("In HOST mode")
             sys.exit(10)
     else:

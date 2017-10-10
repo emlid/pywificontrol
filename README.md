@@ -15,7 +15,7 @@ sudo apt-get update
 sudo apt-get install hostapd
 sudo apt-get install wpa_supplicant
 ```
-This package works only in root mode   
+This package works only in root mode
 Wificontrol was tested on Intel Edison with Yocto image
 
 ### Dependencies

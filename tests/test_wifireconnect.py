@@ -25,6 +25,10 @@
 import pytest
 import mock
 import threading
+
+# the new reconnect feature requires daemon tree
+# skip if the dependency is not installed
+daemon_tree = pytest.importorskip("daemon_tree")
 from wificontrol.wifireconnect import ReconnectWorker
 
 
