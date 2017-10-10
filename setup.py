@@ -4,9 +4,9 @@ setup(
     name='wificontrol',
     version='0.4.0',
     author='Ivan Sapozhkov, Denis Chagin',
-    author_email='ivan.sapozhkov@emlid.com, denis.chagin@emlid.com',
+    author_email='denis.chagin@emlid.com',
     packages=['wificontrol', 'wificontrol.utils'],
-    license='GPLv3',
+    license='BSD-3',
     url='https://github.com/emlid/reach-wifi-configurator.git',
     description='Module for control WiFi connections with host(AP) and client(WPA) modes.',
     install_requires=[
