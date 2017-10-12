@@ -126,7 +126,7 @@ def main():
 
     def print_wifi_state():
         print(WiFiControl().get_status())
-wifi_monitor = WiFiMonitor()
+        wifi_monitor = WiFiMonitor()
 
     wifi_monitor.register_callback(wifi_monitor.HOST_STATE, print_wifi_state)
     wifi_monitor.register_callback(wifi_monitor.CLIENT_STATE, print_wifi_statete)
