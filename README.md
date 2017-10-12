@@ -126,8 +126,7 @@ def main():
 
     def print_wifi_state():
         print(WiFiControl().get_status())
-
-    wifi_monitor = WiFiMonitor()
+wifi_monitor = WiFiMonitor()
 
     wifi_monitor.register_callback(wifi_monitor.HOST_STATE, print_wifi_state)
     wifi_monitor.register_callback(wifi_monitor.CLIENT_STATE, print_wifi_statete)
@@ -149,4 +148,4 @@ if __name__ == '__main__':
 
 ##### Credits
 
-This package was written by [Ivan Sapozhkov](https://github.com/AD-Aleksandrov) and [Denis Chagin](https://github.com/merindorium). It is used in [Emlid](https://emlid.com)'s products, such as Reach and Reach RS.
+This package was written by [Ivan Sapozhkov](https://github.com/isapozhkov) and [Denis Chagin](https://github.com/merindorium). It is used in [Emlid](https://emlid.com)'s products, such as Reach and Reach RS.
