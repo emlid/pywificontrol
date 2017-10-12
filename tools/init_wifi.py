@@ -1,6 +1,8 @@
-# Written by Ivan Sapozhkov and Denis Chagin <denis.chagin@emlid.com>
+#!/usr/bin/python
+
+# Written by Aleksandr Aleksandrov <aleksandr.aleksandrov@emlid.com>
 #
-# Copyright (c) 2016, Emlid Limited
+# Copyright (c) 2017, Emlid Limited
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms,
@@ -34,47 +36,38 @@
 
 
 import sys
-from wificontrol import WiFiControl, WiFiControlError
+
+from wificontrol import WiFiControl
 
 
-def connection_callback(result, wific):
-    if not result:
-        print("Can't connect to any network.")
-        print("Start HOSTAP mode")
-        try:
-            wific.start_host_mode()
-        except WiFiControlError as error:
-            print(error)
-            sys.exit(2)
-        else:
-            print("In HOST mode")
-            sys.exit(10)
+def _show_result(result, wifi_controller):
+    if result:
+        sys.stdout.write("Network mode: client")
     else:
-        status = wific.get_status()[1]
-        print("Connected to {}".format(status['ssid']))
-        sys.exit(0)
+        if wifi_controller.start_host_mode():
+            sys.stdout.write("Network mode: master")
+        else:
+            sys.stdout.write("Network mode: unknown")
+
+
+def initialize():
+    try:
+        wifi_controller = WiFiControl()
+    except OSError:
+        sys.stdout.write("Network mode: unknown")
+    else:
+        wifi_controller.turn_on_wifi()
+
+        if wifi_controller.start_client_mode():
+            wifi_controller.start_connecting(
+                None, callback=_show_result,
+                args=(wifi_controller,))
+        else:
+            if wifi_controller.start_host_mode():
+                sys.stdout.write("Network mode: master")
+            else:
+                sys.stdout.write("Network mode: unknown")
 
 
 if __name__ == "__main__":
-    try:
-        rwc = wificontrol()
-    except OSError, error:
-        print(error)
-        sys.exit(2)
-    else:
-        print("Start wpa_supplicant service")
-        try:
-            rwc.start_client_mode()
-        except WiFiControlError as error:
-            print(error)
-            try:
-                rwc.start_host_mode()
-            except WiFiControlError as error:
-                print(error)
-                sys.exit(2)
-            else:
-                print("In HOST mode")
-                sys.exit(10)
-        else:
-            print("Start connecting to networks")
-            rwc.start_connecting(None, callback=connection_callback, args=rwc)
+    initialize()
