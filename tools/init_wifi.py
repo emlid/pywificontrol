@@ -1,6 +1,8 @@
-# Written by Ivan Sapozhkov and Denis Chagin <denis.chagin@emlid.com>
+#!/usr/bin/python
+
+# Written by Aleksandr Aleksandrov <aleksandr.aleksandrov@emlid.com>
 #
-# Copyright (c) 2016, Emlid Limited
+# Copyright (c) 2017, Emlid Limited
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms,
@@ -33,40 +35,39 @@
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-import os
-from random import randint
-from wificontrol.hostapd import HostAP
-from tests import edison
+import sys
+
+from wificontrol import WiFiControl
 
 
-@edison
-class TestHostAP:
-    @classmethod
-    def setup_class(cls):
-        cur_path = os.getcwd()
-        hostapd_path = cur_path + "/tests/test_files/hostapd.conf"
-        hostname_path = cur_path + "/tests/test_files/hostname"
-        cls.hotspot = HostAP('wlan0', hostapd_path, hostname_path)
+def _show_result(result, wifi_controller):
+    if result:
+        sys.stdout.write("Network mode: client")
+    else:
+        if wifi_controller.start_host_mode():
+            sys.stdout.write("Network mode: master")
+        else:
+            sys.stdout.write("Network mode: unknown")
 
-    @classmethod
-    def teardown_class(cls):
-        pass
 
-    def test_set_hostap_name(self):
-        new_name = "testname_{}".format(randint(0, 1000))
-        self.hotspot.set_hostap_name(new_name)
-        mac_end = self.hotspot.get_device_mac()[-6:]
-        assert self.hotspot.get_hostap_name() == "{}{}".format(new_name, mac_end)
+def initialize():
+    try:
+        wifi_controller = WiFiControl()
+    except OSError:
+        sys.stdout.write("Network mode: unknown")
+    else:
+        wifi_controller.turn_on_wifi()
 
-    def test_set_host_name(self):
-        new_name = "testname_{}".format(randint(0, 1000))
-        self.hotspot.set_host_name(new_name)
-        assert self.hotspot.get_host_name() == new_name
+        if wifi_controller.start_client_mode():
+            wifi_controller.start_connecting(
+                None, callback=_show_result,
+                args=(wifi_controller,))
+        else:
+            if wifi_controller.start_host_mode():
+                sys.stdout.write("Network mode: master")
+            else:
+                sys.stdout.write("Network mode: unknown")
 
-    def test_start_hotspot(self):
-        self.hotspot.start()
-        assert self.hotspot.started() is True
 
-    def test_stop_hotspot(self):
-        self.hotspot.stop()
-        assert self.hotspot.started() is False
+if __name__ == "__main__":
+    initialize()

@@ -1,116 +1,139 @@
-# WiFiControl
+#### Python API to control Wi-Fi connectivity
 
-**Wificontrol** is a module for management wireless networks.
-That module provide two modes of wireless interface:
+Simple, human Python API to control your device's wireless connectivity. Allows you to:
 
- 1. Like AccessPoint in host mode.
- 2. Like Client in client mode.
+* Switch between client and hotspot modes
+* Scan for networks in client mode
+* Add and remove networks in the wpa_supplicant
+* Connect to a certain or any network
+* Add handlers to certain network-related events, like switching modes or a successful connection
 
-Functions of module based on two packages: *hostapd* (AP-mode) and *wpa_supplicant* (Client-mode).  
-WPA Supplicant operations use DBus w1.fi.wpa_supplicant1
+The project was originally started as a part of ReachView, the software powering [Emlid Reach](https://emlid.com/reachrs/) receivers. However, it was written with any modern Linux distro in mind. As long as you comply with the dependencies listed below, it will work.
 
-For successful using intall it:
-```bash
-sudo apt-get update
-sudo apt-get install hostapd
-sudo apt-get install wpa_supplicant
+##### Prerequisites
+
+This package uses D-Bus to control systemd and wpa_supplicant. You need to have D-Bus itself and its python bindings in order to use this library. For example, on Ubuntu you need to install the following packages:
+
+`sudo apt install dbus libdbus-glib-1-dev libdbus-1-dev python-dbus`
+
+The D-Bus is used to control wpa_supplicant and hostapd systemd services. Stopping one of them and starting the other should be sufficient to actually turn on hotspot or get back to client mode on your system.
+
+The project also relies on the following python packages:
+
+* [netifaces](https://pypi.python.org/pypi/netifaces)
+* [systemd-manager](https://github.com/emlid/systemd-manager)
+
+The setup.py **does not contain** the python dependencies and you have to install them manually.
+
+The wificontrol package has been tested and used with **Python 2.7**.
+**Python 3.5** should also work with minor modifications, if any.
+
+Practically everything wificontrol does, requires **root access**.
+
+##### WiFiControl Examples
+
+###### Checking connection status
+
 ```
-This package works only in root mode   
-Wificontrol was tested on Intel Edison with Yocto image
+>>> import wificontrol
+>>> wifi = wificontrol.WiFiControl()
+>>> wifi.get_status()
+('wpa_supplicant', {'IP address': '192.168.1.17', 'ssid': 'MYNETWORK', 'mac address': '9f:b6:86:0f:19:93'})
+```
 
-### Dependencies
+###### Switching modes
 
-`sysdmanager`
-`netifaces`
+```
+>>> wifi.start_host_mode()
+True
+>>> wifi.start_client_mode()
+True
+```
 
-The package was tested with **Python 2.7** and **Python 3.5**
+###### Scanning and connecting
 
-### Install
+```
+>>> wifi.scan()
+>>> wifi.get_scan_results()
+[{'security': 'WPA2-PSK', 'connected': False, 'ssid': 'reach:db:76'}, ...]
+>>> wifi.add_network({'security': 'wpa2psk', 'ssid': 'reach:db:76', 'password': 'emlidreach', 'identity': ''})
+>>> # the following method is non-blocking, but offers a callback option
+...
+>>> wifi.start_connecting({'ssid': 'reach:db:76'})
+>>> wifi.get_status()
+('wpa_supplicant', {'IP address': u'192.168.42.21', 'ssid': 'reach:db:76', 'mac address': u'90:b6:86:0f:19:93'})
+```
 
-`make install`
+##### WiFiControl API
 
-### Tests
+All methods might raise the `wificontrol.WiFiControlError` if something does not go according to plan.
+If you don't have hostapd or wpa_supplicant package, WiFiControl will raise an `OSError` exception.
 
-`sudo make test`
+All methods are blocking unless specified otherwise. Some, like `scan()`, might take a while to complete.
 
-### Usage
+* `WiFiControl()` constructor arguments:
+    * `interface`: network interface name. Defaults to `wlan0`
+    * `wpas_config`: path to wpa_supplicant.conf file. Defaults to: `/etc/wpa_supplicant/wpa_supplicant.conf`
+    * `p2p_config`: path to p2p_supplicant.conf file. Defaults to: `/etc/wpa_supplicant/p2p_supplicant.conf`
+    * `hostapd_config`: path to hostapd.conf file. Defaults to: `/etc/hostapd/hostapd.conf`
+    * `hostname_config`: path to hostname file. Defaults to: `/etc/hostname`
 
- - `WiFiControl(arguments)` - constructor. Arguments:
-   - interface: WiFi interface. Default value: 'wlan0'
-   - wpas_config: path to wpa_supplicant.conf file. Default value: '/etc/wpa_supplicant/wpa_supplicant.conf'
-   - p2p_config: path to p2p_supplicant.conf file. Default value: '/etc/wpa_supplicant/p2p_supplicant.conf'
-   - hostapd_config: path to hostapd.conf file. Default value: '/etc/hostapd/hostapd.conf'
-   - hostname_config: path to hostname file. Default value: '/etc/hostname'
- 
- - `start_host_mode()` - run WiFi interface as wireless AP mode
- - `start_client_mode()` - run WiFi interface as client mode
- - `set_device_names(newName)` - change your device name
- - `get_device_name()` - return name of your device
- - `get_hostap_name()` - return name of your Access Point in AP mode
- - `get_status()` - get WiFi status. return value: `tuple(mode, network_info)`. Network info is a `dict('IP address', 'ssid', 'mac address')`
- - `turn_on_wifi()` - turned on wifi through `rfkill block` command
- - `turn_off_wifi()` - turned on wifi through `rfkill unblock` command
- - `is_wifi_on()` - return value: `bool`
+###### Hardware control
 
- - `scan()` - scan networks. Only for client mode
- - `get_scan_results()` - return list of available networks. Return value: `list[{'security': security, 'ssid': ssid, 'mac address': bssid}]`
- - `get_added_networks()` - return list of added networks. Return value: `list[{'security': security, 'ssid': ssid, 'connected': bool}]`
- - `add_network(dict{'security': security, 'ssid': ssid, 'password': psk, 'identity': identity})` - add new network.   
-**List of possible security protocols**:
-    - 'open'
-    - 'wep'
-    - 'wpapsk'
-    - 'wpa2psk'
-    - 'wpaeap'   
-For network with Open security protocol field 'password' has no effect.   
-Network with WPA Enterprise security protocol has additional field 'identity'
+* `WiFiControl().turn_on_wifi()` - turn the wi-fi on using `rfkill`
+* `WiFiControl().turn_off_wifi()` - turn the wi-fi off using `rfkill`
+* `WiFiControl().is_wifi_on()` - return bool of whether the wi-fi is on
 
- - `remove_network(dict{'ssid': ssid})` - remove network from wpa_supplicant.conf file. Return value: `bool`
-  
- - `start_connecting(network, callback=None, args=None, timeout=const)` - connect to network from network_list in thread.  
-  Connecting to network continue for a several seconds into a background Thread.  
-  To notify user about ending of connection use callback functions.  
-  Prototype of callback function is `foo(result, args)`.  
-  If program can't connect to your network and you don't set any callback then you will be switched to host mode.  
-  For try connection to any known network set network=None
-  There are some reasons for ending of connection:
-    * Successful connection
-  	* Timeout error
-    * Retry of connection
-    * User request of end connection
- - `stop_connecting()` - stop connection thread
- - `disconnect()` - disconnect from current network
- 
-### Exceptions
+###### Mode switching
 
-If you don't have hostapd or wpa_supplicant package, `__init__` function raise `OSError` exception.  
-WiFiControl raise `WiFiControlError` exception on failure.
+* `WiFiControl().start_host_mode()` - stop wpa_supplicant and start hostapd
+* `WiFiControl().start_client_mode()` - stop hostapd and start wpa_supplicant
+
+###### Status and naming
+
+* `WiFiControl().get_status()` - get wireless connection status. Returns `(mode, network_info)`. Mode is on of `wpa_supplicant` or `hostapd`. `network_info` is a dict with fields `'IP address', 'ssid', 'mac address'`
+* `WiFiControl().set_device_names(new_name)` - change hostname, p2p_name and Host AP SSID. Host AP SSID gets last 4 mac address digits appended in form of `reach:db:76` for uniqueness
+* `WiFiControl().get_device_name()` - returns device name string
+* `WiFiControl().get_hostap_name()` - returns Host AP SSID name
+
+###### Scanning and working with networks
+
+* `WiFiControl().scan()` - scan for visible networks. Only works in client mode
+* `WiFiControl().get_scan_results()` - return a list of visible networks. Each network is represented with a dict with fields `'security', 'ssid', 'mac address'`
+* `WiFiControl().get_added_networks()` - return a list of added networks. Each network is represented with a dict with fields `'security', 'ssid', 'security'`
+* `WiFiControl().add_network({'security': security, 'ssid': ssid, 'password': psk, 'identity': identity})` - add a new network to the system and wpa_supplicant.conf. Security field is one of `'open', 'wep', 'wpapsk', 'wpa2psk', 'wpaeap'`. Identity is only used for WPA2 Enterprise, but is always required to be in the dict.
+* `WiFiControl().remove_network({'ssid': ssid})` - remove network from the system and wpa_supplicant.conf
+* `WiFiControl().start_connecting({'ssid': ssid}, callback=None, args=None, timeout=None)` - connect to one of the added networks. Add an optional callback function to execute after the connection process ended. The function's first argument will be a bool, representing connection success. Prototype looks like this: `def foo(result, args):`
+* `WiFiControl().stop_connecting()` - stop the connection thread
+* `WiFiControl().disconnect()` - disconnect from the current network
 
 
-### WiFiMonitor 
+##### WiFiMonitor daemon
 
-Monitor module which processing WPA Supplicant and HostAPD D-Bus signals
+Add handlers to wpa_supplicant and hostapd D-Bus events. **Must be** run in a separate process. D-Bus does not work with Python threads. Tools directory has a script and service files used to watch for network status on Reach.
 
 #### Usage Example
 
-```python
+```
 import signal
-from reachstatus import StateClient
-from wificontrol import WiFiMonitor
+from wificontrol import WiFiMonitor, WiFiControl
 
 
 def main():
+
     def handler(signum, frame):
         wifi_monitor.shutdown()
 
-    wifi_monitor = WiFiMonitor()
+    def print_wifi_state():
+        print(WiFiControl().get_status())
+wifi_monitor = WiFiMonitor()
 
-    wifi_monitor.register_callback(wifi_monitor.HOST_STATE, StateClient.set_network_host_state)
-    wifi_monitor.register_callback(wifi_monitor.CLIENT_STATE, StateClient.set_network_client_state)
-    wifi_monitor.register_callback(wifi_monitor.OFF_STATE, StateClient.set_network_disabled_state)
-    wifi_monitor.register_callback(wifi_monitor.SCAN_STATE, StateClient.set_network_scan_state)
-    wifi_monitor.register_callback(wifi_monitor.REVERT_EVENT, StateClient.send_revert_connect_notify)
-    wifi_monitor.register_callback(wifi_monitor.SUCCESS_EVENT, StateClient.send_success_connect_notify)
+    wifi_monitor.register_callback(wifi_monitor.HOST_STATE, print_wifi_state)
+    wifi_monitor.register_callback(wifi_monitor.CLIENT_STATE, print_wifi_statete)
+    wifi_monitor.register_callback(wifi_monitor.OFF_STATE, print_wifi_statetate)
+    wifi_monitor.register_callback(wifi_monitor.SCAN_STATE, print_wifi_state)
+    wifi_monitor.register_callback(wifi_monitor.REVERT_EVENT, print_wifi_statetify)
+    wifi_monitor.register_callback(wifi_monitor.SUCCESS_EVENT, print_wifi_stateotify)
 
     signal.signal(signal.SIGINT, handler)
     signal.signal(signal.SIGTERM, handler)
@@ -122,3 +145,7 @@ if __name__ == '__main__':
     main()
 
 ```
+
+##### Credits
+
+This package was written by [Ivan Sapozhkov](https://github.com/isapozhkov) and [Denis Chagin](https://github.com/merindorium). It is used in [Emlid](https://emlid.com)'s products, such as Reach and Reach RS.

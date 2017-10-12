@@ -1,20 +1,15 @@
-from setuptools import setup
+from setuptools import setup, find_packages
+
 
 setup(
     name='wificontrol',
     version='0.4.0',
     author='Ivan Sapozhkov, Denis Chagin',
-    author_email='ivan.sapozhkov@emlid.com, denis.chagin@emlid.com',
-    packages=['wificontrol', 'wificontrol.utils'],
-    license='GPLv3',
+    author_email='denis.chagin@emlid.com',
+    packages=find_packages(exclude=['tests']),
+    license='BSD-3',
     url='https://github.com/emlid/reach-wifi-configurator.git',
-    description='Module for control WiFi connections with host(AP) and client(WPA) modes.',
-    install_requires=[
-        'sysdmanager',
-        'netifaces'
-    ],
-    extras_require={
-        'test': ['pytest', 'pytest-cov'],
-    },
+    description='Python API to control WiFi connectivity',
+    tests_require=['pytest', 'pytest-mock'],
     long_description=open('README.md').read()
 )
