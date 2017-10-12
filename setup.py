@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
 
+
 setup(
     name='wificontrol',
     version='0.4.0',
