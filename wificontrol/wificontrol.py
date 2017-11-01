@@ -79,7 +79,7 @@ class WiFiControl(object):
         return (self.wpasupplicant.started() or self.hotspot.started())
 
     def set_hostap_password(self, password):
-        self.hotspot.set_hostap_password(password)
+        return self.hotspot.set_hostap_password(password)
 
     def get_device_name(self):
         return self.hotspot.get_host_name()
@@ -92,6 +92,19 @@ class WiFiControl(object):
         self.hotspot.set_hostap_name(name)
         self.hotspot.set_host_name(name)
         self.wifi.restart_dns()
+        return self.verify_device_names(name)
+
+    def verify_hostap_name(self, name):
+        mac_addr = self.hotspot.get_device_mac()[-6:]
+        return "{}{}".format(name, mac_addr) == self.hotspot.get_hostap_name()
+
+    def verify_device_names(self, name):
+        verified = False
+        if name == self.hotspot.get_host_name():
+            if name == self.wpasupplicant.get_p2p_name():
+                if self.verify_hostap_name(name):
+                    verified = True
+        return verified
 
     def get_status(self):
         state = self.get_state()
