@@ -36,6 +36,7 @@
 from hostapd import HostAP
 from wificommon import WiFi
 from wpasupplicant import WpaSupplicant
+from utils import PropertyError
 
 
 class WiFiControl(object):
@@ -111,7 +112,10 @@ class WiFiControl(object):
         wpa_status = None
 
         if state == self.WPA_STATE:
-            wpa_status = self.wpasupplicant.get_status()
+            try:
+                wpa_status = self.wpasupplicant.get_status()
+            except PropertyError:
+                return state, wpa_status
 
         return state, wpa_status
 

@@ -223,3 +223,17 @@ class TestWiFiControl:
 
         self.manager.set_hostap_password(name)
         assert self.manager.hotspot.set_hostap_password.is_called_once_with(name)
+
+    def test_verify_names(self):
+        name = 'test'
+        mac_addr = '11:22:33:44:55:66'
+
+        self.manager.hotspot.get_host_name.return_value = name
+        self.manager.wpasupplicant.get_p2p_name.return_value = name
+        self.manager.hotspot.get_hostap_name.return_value = "{}{}".format(name, mac_addr[-6:])
+        self.manager.hotspot.get_device_mac.return_value = mac_addr[-6:]
+
+        assert self.manager.verify_hostap_name(name)
+        assert self.manager.verify_device_names(name)
+        assert self.manager.hotspot.get_host_name.call_count == 1
+        assert self.manager.wpasupplicant.get_p2p_name.call_count == 1

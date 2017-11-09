@@ -125,6 +125,8 @@ class TestWiFiControl:
 
     def test_network_add(self, valid_network):
         self.manager.add_network(valid_network)
+        self.manager.start_host_mode()
+
         added_networks = self.manager.get_added_networks()
 
         assert valid_network['ssid'] in [network['ssid'] for network in added_networks]
@@ -137,12 +139,14 @@ class TestWiFiControl:
 
     def test_network_remove(self, valid_network):
         self.test_network_add(valid_network)
-        self.manager.remove_network(valid_network)
 
+        self.manager.remove_network(valid_network)
         added_networks = self.manager.get_added_networks()
         assert valid_network['ssid'] not in [network['ssid'] for network in added_networks]
 
     def test_hotspot_after_connect_failure(self, invalid_network):
+
+        self.manager.start_client_mode()
         self.manager.add_network(invalid_network)
         self.manager.start_connecting(invalid_network, timeout=1, callback=self.hostapd_callback)
 

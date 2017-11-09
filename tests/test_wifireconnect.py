@@ -107,7 +107,7 @@ class TestReconnectWorker:
         self.reconnect_worker.start_reconnection(valid_network['ssid'])
         self.reconnect_worker.interrupt.wait(1)
         self.reconnect_worker.stop_reconnection()
-
+        
         self.reconnect_worker.start_reconnection(valid_network['ssid'])
         self.reconnect_worker.interrupt.wait(1)
         self.reconnect_worker.stop_reconnection()
