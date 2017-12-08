@@ -2,7 +2,7 @@
 
 import signal
 from daemon_tree import DaemonTreeSvr
-from wificontrol import ReconnectWorker, WORKER_NAME
+from wifireconnect import ReconnectWorker, WORKER_NAME
 from dev_utils import configure_logging
 
 

@@ -1,11 +1,11 @@
 [Unit]
 Description=Reach WiFi Reconnect
 After=reach_status.service
-Before=wifimonitor.service
+Before=wifimonitord.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/wifireconnect
+ExecStart=/usr/bin/wifireconnectd
 Restart=always
 RestartSec=1
 
