@@ -23,13 +23,11 @@
 
 
 import dbus
-import signal
 import threading
 import logging
-from daemon_tree import DaemonTreeSvr
 from wificontrol import WiFiControl
 
-logging.basicConfig()
+
 logger = logging.getLogger(__name__)
 
 WORKER_NAME = 'wifi_reconnect'
@@ -44,6 +42,7 @@ class ReconnectWorker(object):
         self.worker = None
 
     def start_reconnection(self, ssid):
+        logger.debug('start_reconnection, worker {}'.format(self.worker))
         if self.worker is None:
             self.worker = threading.Thread(target=self._reconnect, args=(ssid,))
             self.worker.daemon = True
@@ -52,9 +51,10 @@ class ReconnectWorker(object):
     def _reconnect(self, ssid):
         self.interrupt.clear()
         self.interrupt.wait(self.TIMEOUT)
-
+        logger.debug('Test reconnect, ssid: {}'.format(ssid))
         while not self.interrupt.is_set():
             try:
+                logger.debug('main loop, check ssid: {}'.format(ssid))
                 self.manager.scan()
                 scan_results = self.manager.get_scan_results()
 
@@ -73,29 +73,8 @@ class ReconnectWorker(object):
             self.interrupt.set()
 
     def stop_reconnection(self):
+        logger.debug('stop_reconnection')
         self.interrupt.set()
         if self.worker:
             self.worker.join()
             self.worker = None
-
-
-def main():
-    def handler(signum, frame):
-        reconnect_worker.stop_reconnection()
-        reconnect_svr.cancel()
-
-    reconnect_worker = ReconnectWorker()
-    reconnect_svr = DaemonTreeSvr(name=WORKER_NAME)
-
-    reconnect_svr.register(reconnect_worker.start_reconnection)
-    reconnect_svr.register(reconnect_worker.stop_reconnection)
-
-    signal.signal(signal.SIGINT, handler)
-    signal.signal(signal.SIGTERM, handler)
-
-    reconnect_svr.run()
-    reconnect_svr.shutdown()
-
-
-if __name__ == '__main__':
-    main()

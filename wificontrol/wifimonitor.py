@@ -38,11 +38,14 @@ import dbus.service
 import dbus.mainloop.glib
 import logging
 from . import WiFiControl
+from wifireconnect import WORKER_NAME
+from daemon_tree import DaemonTreeObj, DaemonTreeError
 
 try:
     from gi.repository import GObject
 except ImportError:
     import gobject as GObject
+
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +99,9 @@ class WiFiMonitor(object):
         self.current_state = self.OFF_STATE
         self.current_ssid = None
 
+        self.reconnect_worker = DaemonTreeObj(WORKER_NAME)
+        self.disconnect_reason = None
+
     def _initialize(self):
         systemd_obj = self.bus.get_object(SYSTEMD_DBUS_SERVICE,
                                           SYSTEMD_DBUS_OPATH)
@@ -119,6 +125,9 @@ class WiFiMonitor(object):
     def _register_local_callbacks(self):
         self.register_callback(self.CLIENT_STATE, self._check_current_ssid)
         self.register_callback(self.HOST_STATE, self._clear_ssid)
+        self.register_callback(self.CLIENT_STATE, self._stop_reconnect_worker)
+        self.register_callback(self.HOST_STATE, self._stop_reconnect_worker)
+        self.register_callback(self.SCAN_STATE, self._start_reconnect_worker)
 
     def _set_initial_state(self):
         state = self.wifi_manager.get_state()
@@ -138,6 +147,7 @@ class WiFiMonitor(object):
         disconnect = props.get('DisconnectReason', None)
 
         if disconnect is not None:
+            self.disconnect_reason = disconnect
             state = 'disconnected'
 
         if state:
@@ -192,6 +202,8 @@ class WiFiMonitor(object):
                     callback(*args)
                 except Exception as error:
                     logger.error('Callback {} execution error. {}'.format(callback.__name__, error))
+                except WiFiMonitorError as error:
+                    logger.error(error)
 
     def run(self):
         try:
@@ -212,4 +224,18 @@ class WiFiMonitor(object):
             self.sysd_manager.Unsubscribe()
         except dbus.exceptions.DBusException as error:
             logger.error(error)
+            raise WiFiMonitorError(error)
+
+    def _start_reconnect_worker(self):
+        try:
+            self.reconnect_worker.call('start_reconnection', args=(self.current_ssid,))
+            logger.debug("start reconnect worker")
+        except DaemonTreeError as error:
+            raise WiFiMonitorError(error)
+
+    def _stop_reconnect_worker(self):
+        try:
+            logger.debug("stop reconnect worker")
+            self.reconnect_worker.call('stop_reconnection')
+        except DaemonTreeError as error:
             raise WiFiMonitorError(error)
