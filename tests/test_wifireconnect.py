@@ -65,6 +65,7 @@ class TestReconnectWorker:
 
     def teardown_method(self):
         self.reconnect_worker.stop_reconnection()
+        assert self.reconnect_worker.worker is None
 
     def test_reconnection_start_and_stop(self, valid_network):
         self.reconnect_worker.start_reconnection(valid_network['ssid'])
@@ -105,12 +106,14 @@ class TestReconnectWorker:
 
     def test_worker_restart(self, valid_network):
         self.reconnect_worker.start_reconnection(valid_network['ssid'])
-        self.reconnect_worker.interrupt.wait(1)
+        self.reconnect_worker.interrupt.wait(2)
         self.reconnect_worker.stop_reconnection()
 
         self.reconnect_worker.start_reconnection(valid_network['ssid'])
-        self.reconnect_worker.interrupt.wait(1)
-        self.reconnect_worker.stop_reconnection()
+        self.reconnect_worker.interrupt.wait(2)
+        self.reconnect_worker.manager.scan.assert_called()
+        self.reconnect_worker.manager.get_scan_results.assert_called()
 
-        assert self.reconnect_worker.interrupt.is_set()
-        assert self.reconnect_worker.worker is None
+        assert self.reconnect_worker.worker
+
+

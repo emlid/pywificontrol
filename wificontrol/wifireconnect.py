@@ -69,12 +69,13 @@ class ReconnectWorker(object):
             self.interrupt.wait(self.TIMEOUT)
 
     def _callback(self, result=None):
+        logger.debug('start_connecting callback: {}'.format(result))
         if result:
             self.interrupt.set()
 
     def stop_reconnection(self):
-        logger.debug('stop_reconnection')
         self.interrupt.set()
         if self.worker:
+            logger.debug('stop_reconnection')
             self.worker.join()
             self.worker = None
