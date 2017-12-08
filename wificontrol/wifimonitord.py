@@ -38,7 +38,7 @@
 
 import signal
 from reachstatus import StateClient
-from wificontrol import WiFiMonitor
+from wifimonitor import WiFiMonitor
 from dev_utils import configure_logging
 
 
