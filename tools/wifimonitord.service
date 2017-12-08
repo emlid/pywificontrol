@@ -1,10 +1,10 @@
 [Unit]
 Description=Reach WiFi Status Monitor
-After=wifireconnect.service
+After=wifireconnectd.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/wifimonitor
+ExecStart=/usr/bin/wifimonitord
 Restart=always
 RestartSec=1
 
