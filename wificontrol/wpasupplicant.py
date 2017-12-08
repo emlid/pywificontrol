@@ -32,6 +32,10 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import os
+import sys
+import time
+import dbus
 
 from wificommon import WiFi
 from utils import CfgFileUpdater
@@ -41,16 +45,18 @@ from utils import convert_to_wpas_network, convert_to_wificontrol_network, \
 from utils import FileError
 from utils import ServiceError, InterfaceError, PropertyError
 from threading import Thread, Event, Timer
-import time
-import sys
+from shutil import copyfile, rmtree
+
+PATH_TO_DEFAULT_WPAS_CONFIG = '/etc/wpa_supplicant/wpa_supplicant.conf.default'
+PATH_TO_WPAS_CONFIG = '/etc/wpa_supplicant/wpa_supplicant.conf'
+PATH_TO_NETWORKS_DIR = '/etc/wpa_supplicant/networks'
 
 
 class WpaSupplicant(WiFi):
-    wpas_control = lambda self, action: "systemctl {} wpa_supplicant.service && sleep 2".format(
-        action)
+    sysd_non_active_states = ('reloading', 'inactive', 'activating', 'deactivating')
 
     def __init__(self, interface,
-                 wpas_config="/etc/wpa_supplicant/wpa_supplicant.conf",
+                 wpas_config=PATH_TO_WPAS_CONFIG,
                  p2p_config="/etc/wpa_supplicant/p2p_supplicant.conf"):
 
         super(WpaSupplicant, self).__init__(interface)
@@ -81,12 +87,44 @@ class WpaSupplicant(WiFi):
 
         return wpa_supplicant_started
 
+    def check_for_errors(self, unit_name):
+        error_state = self.sysdmanager.is_failed(unit_name)
+        if error_state:
+            error_code = self.sysdmanager.get_error_code(unit_name)
+            return error_code
+        else:
+            return None
+
     def start(self):
-        self.execute_command(self.wpas_control("start"))
+        self.sysdmanager.start_unit("wpa_supplicant.service")
+        while self.sysdmanager.get_active_state("wpa_supplicant.service") in self.sysd_non_active_states:
+            time.sleep(0.2)
+
+        status = self.check_for_errors("wpa_supplicant.service")
+
+        if status == 255:
+            self.stop()
+            self.reconnect_with_restore_config()
+
         self.wpa_supplicant_interface.initialize()
 
+    def reconnect_with_restore_config(self):
+        try:
+            copyfile(PATH_TO_DEFAULT_WPAS_CONFIG, PATH_TO_WPAS_CONFIG)
+            self.remove_all_networks()
+        except IOError as err:
+            print err
+        else:
+            self.start()
+
+    def remove_all_networks(self):
+        try:
+            rmtree(PATH_TO_NETWORKS_DIR)
+        except OSError:
+            pass
+
     def stop(self):
-        self.execute_command(self.wpas_control("stop"))
+        self.sysdmanager.stop_unit("wpa_supplicant.service")
 
     def get_status(self):
         network_params = None
@@ -285,5 +323,4 @@ class WpaSupplicant(WiFi):
 
 
 if __name__ == '__main__':
-    wifi = WpaSupplicant('wlp6s0')
-    print(wifi.get_status())
+    wifi = WpaSupplicant('wlan0')

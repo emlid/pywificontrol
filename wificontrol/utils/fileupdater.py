@@ -124,8 +124,12 @@ class ConfigurationFileUpdater(object):
             return [self.__parse_network(network) for network in raw_networks.strip().split('\n\n')]
 
     def __parse_network(self, raw_network):
-        param_pair_list = raw_network[raw_network.find('\t'):raw_network.find('}')].strip().split('\n')
-        return {key.strip(): parameter.strip("\"") for key, parameter in (param_pair.split('=', 1) for param_pair in param_pair_list)}
+        try:
+            param_pair_list = raw_network[raw_network.find('\t'):raw_network.find('}')].strip().split('\n')
+        except ValueError:
+            return None
+        else:
+            return {key.strip(): parameter.strip("\"") for key, parameter in (param_pair.split('=', 1) for param_pair in param_pair_list)}
 
     def __create_config_file(self):
         return self.head + '\n' + '\n'.join([str(NetworkTemplate(network)) for network in self.networks])
