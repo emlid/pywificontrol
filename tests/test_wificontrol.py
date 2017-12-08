@@ -35,6 +35,7 @@
 
 import pytest
 import mock
+
 from wificontrol import WiFiControl
 
 

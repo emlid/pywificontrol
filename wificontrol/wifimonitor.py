@@ -100,7 +100,6 @@ class WiFiMonitor(object):
         self.current_ssid = None
 
         self.reconnect_worker = DaemonTreeObj(WORKER_NAME)
-        self.disconnect_reason = None
 
     def _initialize(self):
         systemd_obj = self.bus.get_object(SYSTEMD_DBUS_SERVICE,
@@ -147,7 +146,6 @@ class WiFiMonitor(object):
         disconnect = props.get('DisconnectReason', None)
 
         if disconnect is not None:
-            self.disconnect_reason = disconnect
             state = 'disconnected'
 
         if state:
@@ -229,13 +227,15 @@ class WiFiMonitor(object):
     def _start_reconnect_worker(self):
         try:
             self.reconnect_worker.call('start_reconnection', args=(self.current_ssid,))
-            logger.debug("start reconnect worker")
+            logger.debug('Start reconnect worker')
         except DaemonTreeError as error:
+            logger.error('Start reconnect error. {}'.format(error))
             raise WiFiMonitorError(error)
 
     def _stop_reconnect_worker(self):
         try:
-            logger.debug("stop reconnect worker")
+            logger.debug('Stop reconnect worker')
             self.reconnect_worker.call('stop_reconnection')
         except DaemonTreeError as error:
+            logger.error('Stop reconnect error. {}'.format(error))
             raise WiFiMonitorError(error)
