@@ -1,6 +1,6 @@
 [Unit]
 Description=Reach WiFi Status Monitor
-After=reach_status.service
+After=wifireconnect.service
 
 [Service]
 Type=simple

@@ -1,0 +1,13 @@
+[Unit]
+Description=Reach WiFi Reconnect
+After=reach_status.service
+Before=wifimonitor.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/wifireconnect
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
