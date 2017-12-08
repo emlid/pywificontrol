@@ -47,7 +47,6 @@ class NetworkTemplate(object):
     string_template = '\t{}=\"{}\"'
     variant_template = '\t{}={}'
 
-
     def __init__(self, network_parameters):
         self.network_parameters = network_parameters
 
@@ -74,9 +73,7 @@ def CfgFileUpdater(cfg_file_path="/etc/wpa_supplicant/wpa_supplicant.conf"):
 
 class NullFileUpdater(object):
     def __init__(self, config_file_path=None):
-        self.head = None
         self.networks = list()
-        self.raw_file = None
 
     def add_network(self, network):
         pass
@@ -86,38 +83,48 @@ class NullFileUpdater(object):
 
 
 class ConfigurationFileUpdater(object):
+    network_path = "/etc/wpa_supplicant/networks"
 
     def __init__(self, config_file_path="/etc/wpa_supplicant/wpa_supplicant.conf"):
 
-        self.head = None
         self.networks = list()
-        self.raw_file = None
         self.__config_file_path = config_file_path
+        self.__parse_network_configs()
 
-        self.__initialise()
+    def __collect_network_configurations(self):
+        raw_network = ''
+        if os.path.exists(self.network_path):
+            network_files = os.listdir(self.network_path)
+            for network in network_files:
+                raw_network += self.__select_and_read_netconf_files(network)
 
-    def __initialise(self):
+        return raw_network
+
+    def __select_and_read_netconf_files(self, file):
+        raw_network = ''
+        filename, file_extension = os.path.splitext(file)
+        if file_extension == ".netconf":
+            network_file_path = os.path.join(self.network_path, file)
+            raw_network = self.__read_network_file(network_file_path)
+            return raw_network
+        return raw_network
+
+    def __read_network_file(self, path):
         try:
-            with open(self.__config_file_path, 'r') as config_file:
-               self.raw_file = config_file.read() 
+            with open(path, 'r') as network_file:
+                raw_network_file = network_file.read()
         except IOError:
-            raise FileError("No configuration file")
+            raise FileError("No network file")
         else:
-            self.__parse_file()
+            return raw_network_file
 
-    def __parse_file(self):
-        self.head = self.__get_header()
-        self.networks = self.__get_network_list()
+    def __parse_network_configs(self):
+        self.networks = self.__get_network_list_()
 
-    def __get_header(self):
+    def __get_network_list_(self):
         try:
-            return self.raw_file[0: self.raw_file.index('\nnetwork={')]
-        except ValueError:
-            return (self.raw_file.strip() + '\n')
-
-    def __get_network_list(self):
-        try:
-            raw_networks = self.raw_file[self.raw_file.index('\nnetwork={'):]
+            nets = self.__collect_network_configurations()
+            raw_networks = nets[nets.index('\nnetwork={'):]
         except ValueError:
             return []
         else:
@@ -131,26 +138,41 @@ class ConfigurationFileUpdater(object):
         else:
             return {key.strip(): parameter.strip("\"") for key, parameter in (param_pair.split('=', 1) for param_pair in param_pair_list)}
 
-    def __create_config_file(self):
-        return self.head + '\n' + '\n'.join([str(NetworkTemplate(network)) for network in self.networks])
-
     def __findNetwork(self, network_aim):
         for network in self.networks:
             if network["ssid"].strip("\'\"") == network_aim["ssid"]:
                 return network
 
-    def __update_config_file(self):
-        with open(self.__config_file_path, 'w') as config_file:
-            config_file.write(self.__create_config_file())
-            config_file.flush()
-            os.fsync(config_file)
+    def __write_network_file(self, network_config, network_file_path):
+        with open(network_file_path, "w") as network_file:
+            network_file.write(network_config)
+            network_file.flush()
+            os.fsync(network_file)
+
+    def __add_network_file(self, network):
+        if not os.path.exists(self.network_path):
+            os.mkdir(self.network_path)
+
+        network_file_path = "{}/{}.netconf".format(self.network_path, network['ssid'])
+        network_config = self.__create_network_config(network)
+
+        self.__write_network_file(network_config, network_file_path)
+
+    def __create_network_config(self, network):
+        return '\n{}'.format(str(NetworkTemplate(network)))
 
     def add_network(self, network):
         if self.__findNetwork(network) is None:
             self.networks.append(network)
-            self.__update_config_file()
+            self.__add_network_file(network)
         else:
             raise AttributeError("Network already added")
+
+    def __remove_network_file(self, network):
+        network_file_path = "{}/{}.netconf".format(self.network_path, network['ssid'])
+
+        if os.path.exists(network_file_path):
+            os.remove(network_file_path)
 
     def remove_network(self, network):
         try:
@@ -158,7 +180,7 @@ class ConfigurationFileUpdater(object):
         except ValueError:
             raise AttributeError("No such network")
         else:
-            self.__update_config_file()
+            self.__remove_network_file(network)
 
 
 if __name__ == '__main__':
