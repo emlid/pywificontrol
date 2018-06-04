@@ -37,7 +37,7 @@
 
 import sys
 
-from wificontrol import WiFiControl
+from wificontrol import WiFiControl, WiFiControlError
 
 
 def _show_result(result, wifi_controller):
@@ -53,7 +53,7 @@ def _show_result(result, wifi_controller):
 def initialize():
     try:
         wifi_controller = WiFiControl()
-    except OSError:
+    except WiFiControlError:
         sys.stdout.write("Network mode: unknown")
     else:
         wifi_controller.turn_on_wifi()

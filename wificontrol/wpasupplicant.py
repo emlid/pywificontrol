@@ -33,7 +33,7 @@
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-from wificommon import WiFi
+from wificommon import WiFi, WiFiControlError
 from utils import CfgFileUpdater
 from utils import WpaSupplicantInterface, WpaSupplicantNetwork, WpaSupplicantBSS
 from utils import convert_to_wpas_network, convert_to_wificontrol_network, \
@@ -59,7 +59,7 @@ class WpaSupplicant(WiFi):
 
         if (b'bin/wpa_supplicant' not in self.execute_command(
                 "whereis wpa_supplicant")):
-            raise OSError('No WPA_SUPPLICANT service')
+            raise WiFiControlError('No WPA_SUPPLICANT service')
 
         self.wpa_supplicant_interface = WpaSupplicantInterface(self.interface)
         self.wpa_bss_manager = WpaSupplicantBSS()
