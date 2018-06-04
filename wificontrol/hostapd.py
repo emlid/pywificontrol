@@ -72,7 +72,10 @@ class HostAP(WiFi):
         return self.verify_hostap_password(password)
 
     def verify_hostap_password(self, value):
-        return self.re_search("(?<=^wpa_passphrase=).*", self.hostapd_path) == value
+        return self.get_hostap_password() == value
+
+    def get_hostap_password(self):
+        return self.re_search("(?<=^wpa_passphrase=).*", self.hostapd_path)
 
     def set_host_name(self, name='reach'):
         try:
