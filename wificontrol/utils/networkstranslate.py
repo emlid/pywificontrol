@@ -33,24 +33,31 @@
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+OPEN_SEC = "open"
+WEP_SEC = "wep"
+WPA_SEC = "wpa"
+WPAPSK_SEC = "wpa-psk"
+WPAEAP_SEC = "wpa-eap"
+
+
 def create_security(proto, key_mgmt, group):
     if not proto:
-        return 'open'
+        return OPEN_SEC
     if not key_mgmt:
         if "wep" in group:
-            return 'wep'
+            return WEP_SEC
         else:
             return None
     else:
         if "wpa-psk" in key_mgmt:
             if proto == "WPA":
-                return "wpapsk"
+                return WPA_SEC
             elif proto == "RSN":
-                return "wpa2psk"
+                return WPAPSK_SEC
             else:
                 return None
         elif "wpa-eap" in key_mgmt:
-            return 'wpaeap'
+            return WPAEAP_SEC
         else:
             return None
 
@@ -80,22 +87,22 @@ class WpasNetworkConverter(object):
         self.identity = network_dict.get('identity', '').encode('utf-8')
 
     def __iter__(self):
-        if (self.security == 'open'):
+        if (self.security == OPEN_SEC):
             yield "ssid", "{}".format(self.name)
             yield "key_mgmt", "NONE"
-        elif (self.security == 'wep'):
+        elif (self.security == WEP_SEC):
             yield "ssid", "{}".format(self.name)
             yield "key_mgmt", "NONE"
             yield "group", "WEP104 WEP40"
             yield "wep_key0", "{}".format(self.password)
-        elif (self.security == 'wpapsk'):
+        elif (self.security == WPA_SEC):
             yield "ssid", "{}".format(self.name)
             yield "key_mgmt", "WPA-PSK"
             yield "pairwise", "CCMP TKIP"
             yield "group", "CCMP TKIP"
             yield "eap", "TTLS PEAP TLS"
             yield "psk", "{}".format(self.password)
-        elif (self.security == 'wpa2psk'):
+        elif (self.security == WPAPSK_SEC):
             yield "ssid", "{}".format(self.name)
             yield "proto", "RSN"
             yield "key_mgmt", "WPA-PSK"
@@ -103,7 +110,7 @@ class WpasNetworkConverter(object):
             yield "group", "CCMP TKIP"
             yield "eap", "TTLS PEAP TLS"
             yield "psk", "{}".format(self.password)
-        elif (self.security == 'wpaeap'):
+        elif (self.security == WPAEAP_SEC):
             yield "ssid", "{}".format(self.name)
             yield "key_mgmt", "WPA-EAP"
             yield "pairwise", "CCMP TKIP"
@@ -129,26 +136,26 @@ class WifiControlNetworkConverter(object):
         if (self.key_mgmt == 'NONE'):
             if not self.group:
                 yield "ssid", self.name
-                yield "security", "Open"
+                yield "security", OPEN_SEC
             else:
                 yield "ssid", self.name
-                yield "security", "WEP"
+                yield "security", WEP_SEC
 
         elif (self.key_mgmt == 'WPA-PSK'):
             if not self.proto:
                 yield "ssid", self.name
-                yield "security", "WPA-PSK"
+                yield "security", WPA_SEC
             else:
                 yield "ssid", self.name
-                yield "security", "WPA2-PSK"
+                yield "security", WPAPSK_SEC
 
         elif (self.key_mgmt == 'WPA-EAP'):
             yield "ssid", self.name
-            yield "security", "WPA-EAP"
+            yield "security", WPAEAP_SEC
 
         else:
             yield "ssid", self.name
-            yield "security", "NONE"
+            yield "security", OPEN_SEC
         yield "connected", False
 
 
