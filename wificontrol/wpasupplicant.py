@@ -93,8 +93,8 @@ class WpaSupplicant(WiFi):
         if self.started():
             network_params = dict()
             network_params['ssid'] = self.get_current_network_ssid()
-            network_params['mac address'] = self.get_device_mac()
-            network_params['IP address'] = self.get_device_ip()
+            network_params['mac_address'] = self.get_device_mac()
+            network_params['ip'] = self.get_device_ip()
         return network_params
 
     def scan(self):
