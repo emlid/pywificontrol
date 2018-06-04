@@ -34,7 +34,7 @@
 
 
 import os
-from wificommon import WiFi
+from wificommon import WiFi, WiFiControlError
 
 
 class HostAP(WiFi):
@@ -49,7 +49,7 @@ class HostAP(WiFi):
         self.hostname_path = hostname_config
 
         if (b'bin/hostapd' not in self.execute_command("whereis hostapd")):
-            raise OSError('No HOSTAPD servise')
+            raise WiFiControlError('No HOSTAPD servise')
 
         self.started = lambda: self.sysdmanager.is_active("hostapd.service")
 
