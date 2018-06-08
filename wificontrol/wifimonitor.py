@@ -200,8 +200,6 @@ class WiFiMonitor(object):
                     callback(*args)
                 except Exception as error:
                     logger.error('Callback {} execution error. {}'.format(callback.__name__, error))
-                except WiFiMonitorError as error:
-                    logger.error(error)
 
     def run(self):
         try:
