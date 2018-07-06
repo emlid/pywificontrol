@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='wificontrol',
-    version='0.4.0',
+    version='0.4.1',
     author='Ivan Sapozhkov, Denis Chagin',
     author_email='denis.chagin@emlid.com',
     packages=find_packages(exclude=['tests']),
