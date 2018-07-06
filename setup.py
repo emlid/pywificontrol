@@ -14,7 +14,6 @@ setup(
     long_description=open('README.md').read(),
     entry_points={
         'console_scripts': [
-            'wifimonitord = wificontrol.wifimonitord:main',
             'wifireconnectd = wificontrol.wifireconnectd:main'
         ]
     },
